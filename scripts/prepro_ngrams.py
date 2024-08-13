@@ -141,9 +141,9 @@ def main(params):
     sys.path.append("./misc")
     import utils
     utils.pickle_dump({'document_frequency': ngram_words, 'ref_len': ref_len},
-                      open(params['output_pkl'] + '-words.p', 'w'))
+                      open(params['output_pkl'] + '-words.p', 'wb'))
     utils.pickle_dump({'document_frequency': ngram_idxs, 'ref_len': ref_len},
-                      open(params['output_pkl'] + '-idxs.p', 'w'))
+                      open(params['output_pkl'] + '-idxs.p', 'wb'))
 
 
 if __name__ == "__main__":
