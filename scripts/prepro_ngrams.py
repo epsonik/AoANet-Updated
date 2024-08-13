@@ -140,7 +140,7 @@ def main(params):
 
     ngram_words, ngram_idxs, ref_len = build_dict(imgs, wtoi, params)
     sys.path.append("../misc")
-    import utils
+    import misc.utils as utils
     utils.pickle_dump({'document_frequency': ngram_words, 'ref_len': ref_len},
                       open(params['output_pkl'] + '-words.p', 'w'))
     utils.pickle_dump({'document_frequency': ngram_idxs, 'ref_len': ref_len},
