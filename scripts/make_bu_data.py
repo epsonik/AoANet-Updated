@@ -29,9 +29,12 @@ infiles = ['trainval/karpathy_test_resnet101_faster_rcnn_genome.tsv',
            'trainval/karpathy_train_resnet101_faster_rcnn_genome.tsv.0', \
            'trainval/karpathy_train_resnet101_faster_rcnn_genome.tsv.1']
 
-os.makedirs(args.output_dir + '_att')
-os.makedirs(args.output_dir + '_fc')
-os.makedirs(args.output_dir + '_box')
+if not os.path.exists(args.output_dir + '_att'):
+    os.makedirs(args.output_dir + '_att')
+if not os.path.exists(args.output_dir + '_fc'):
+    os.makedirs(args.output_dir + '_fc')
+if not os.path.exists(args.output_dir + '_box'):
+    os.makedirs(args.output_dir + '_box')
 
 for infile in infiles:
     print('Reading ' + infile)
