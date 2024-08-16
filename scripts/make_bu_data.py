@@ -49,3 +49,4 @@ for infile in infiles:
             np.savez_compressed(os.path.join(args.output_dir + '_att', str(item['image_id'])), feat=item['features'])
             np.save(os.path.join(args.output_dir + '_fc', str(item['image_id'])), item['features'].mean(0))
             np.save(os.path.join(args.output_dir + '_box', str(item['image_id'])), item['boxes'])
+print("Finished!")
