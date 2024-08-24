@@ -121,7 +121,7 @@ class LabelSmoothing(nn.Module):
         self.smoothing = smoothing
         # self.size = size
         self.true_dist = None
-        
+
     def forward(self, input, target, mask):
         # truncate to the same size
         target = target[:, :input.size(1)]
@@ -171,7 +171,7 @@ def build_optimizer(params, opt):
         return optim.Adam(params, opt.learning_rate, (opt.optim_alpha, opt.optim_beta), opt.optim_epsilon, weight_decay=opt.weight_decay)
     else:
         raise Exception("bad option opt.optim: {}".format(opt.optim))
-    
+
 
 def penalty_builder(penalty_config):
     if penalty_config == '':
@@ -209,7 +209,7 @@ class NoamOpt(object):
         self.factor = factor
         self.model_size = model_size
         self._rate = 0
-        
+
     def step(self):
         "Update parameters and rate"
         self._step += 1
@@ -218,7 +218,7 @@ class NoamOpt(object):
             p['lr'] = rate
         self._rate = rate
         self.optimizer.step()
-        
+
     def rate(self, step = None):
         "Implement `lrate` above"
         if step is None:
@@ -233,10 +233,11 @@ class NoamOpt(object):
 class ReduceLROnPlateau(object):
     "Optim wrapper that implements rate."
     def __init__(self, optimizer, mode='min', factor=0.1, patience=10, verbose=False, threshold=0.0001, threshold_mode='rel', cooldown=0, min_lr=0, eps=1e-08):
-        self.scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode, factor, patience, verbose, threshold, threshold_mode, cooldown, min_lr, eps)
+        # self.scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode, factor, patience, verbose, threshold, threshold_mode, cooldown, min_lr, eps)
+        self.scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode, factor, patience, threshold, threshold_mode, cooldown, min_lr, eps, verbose)
         self.optimizer = optimizer
         self.current_lr = get_lr(optimizer)
-        
+
     def step(self):
         "Update parameters and rate"
         self.optimizer.step()
@@ -261,7 +262,7 @@ class ReduceLROnPlateau(object):
             self.scheduler.load_state_dict(state_dict['scheduler_state_dict'])
             self.optimizer.load_state_dict(state_dict['optimizer_state_dict'])
             # current_lr is actually useless in this case
-    
+
     def rate(self, step = None):
         "Implement `lrate` above"
         if step is None:
@@ -272,10 +273,10 @@ class ReduceLROnPlateau(object):
 
     def __getattr__(self, name):
         return getattr(self.optimizer, name)
-        
+
 def get_std_opt(model, factor=1, warmup=2000):
     # return NoamOpt(model.tgt_embed[0].d_model, 2, 4000,
     #         torch.optim.Adam(model.parameters(), lr=0, betas=(0.9, 0.98), eps=1e-9))
     return NoamOpt(model.model.tgt_embed[0].d_model, factor, warmup,
             torch.optim.Adam(model.parameters(), lr=0, betas=(0.9, 0.98), eps=1e-9))
-    
+
