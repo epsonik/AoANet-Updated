@@ -153,7 +153,7 @@ if __name__ == "__main__":
     parser.add_argument('--input_json', default='/home2/data/images/coco2014/karpathy/dataset_coco.json',
                         help='input json file to process into hdf5')
     parser.add_argument('--dict_json', default='data/cocotalk.json', help='output json file')
-    parser.add_argument('--output_pkl', default='data/coco-all', help='output pickle file')
+    parser.add_argument('--output_pkl', default='data/coco-train', help='output pickle file')
     parser.add_argument('--split', default='train', help='test, val, train, all')
     args = parser.parse_args()
     params = vars(args)  # convert to ordinary dict
