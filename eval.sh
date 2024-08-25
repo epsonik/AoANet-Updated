@@ -8,4 +8,3 @@ python eval.py --model log/log_aoanet_rl/model.pth \
     --batch_size 100 \
     --split test \
     --cnn_model resnet101 \
-    --eval_out_file ""
