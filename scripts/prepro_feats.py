@@ -46,12 +46,11 @@ preprocess = trn.Compose([
         trn.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
 ])
 
-from misc.resnet_utils import myResnet
 import sys
 
 def main(params):
   sys.path.append("./misc")
-  import resnet
+  import resnet, resnet_utils
   net = getattr(resnet, params['model'])()
   net.load_state_dict(torch.load(os.path.join(params['model_root'],params['model']+'.pth')))
   my_resnet = myResnet(net)
