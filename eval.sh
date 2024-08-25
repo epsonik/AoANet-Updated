@@ -4,7 +4,7 @@ python eval.py --model log/log_aoanet_rl/model.pth \
     --dump_json 1 \
     --num_images -1 \
     --language_eval 1 \
-    --beam_size 2 \
-    --batch_size 100 \
+    --beam_size 3 \
+    --batch_size 400 \
     --split test \
-    --cnn_model resnet101
+    --cnn_model resnet101 \
