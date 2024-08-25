@@ -47,9 +47,11 @@ preprocess = trn.Compose([
 ])
 
 from misc.resnet_utils import myResnet
-import misc.resnet as resnet
+import sys
 
 def main(params):
+  sys.path.append("./misc")
+  import resnet
   net = getattr(resnet, params['model'])()
   net.load_state_dict(torch.load(os.path.join(params['model_root'],params['model']+'.pth')))
   my_resnet = myResnet(net)
