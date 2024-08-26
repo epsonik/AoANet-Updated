@@ -49,6 +49,7 @@ preprocess = trn.Compose([
 import sys
 
 def main(params):
+  print("start")
   sys.path.append("./misc")
   import resnet
   from resnet_utils import myResnet
