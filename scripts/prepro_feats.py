@@ -73,6 +73,7 @@ def main(params):
 
   for i,img in enumerate(imgs):
     # load the image
+    print(img['filepath'])
     I = skimage.io.imread(os.path.join(params['images_root'], img['filepath'], img['filename']))
     # handle grayscale input images
     if len(I.shape) == 2:
