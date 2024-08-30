@@ -37,7 +37,6 @@ import h5py
 from six.moves import cPickle
 import numpy as np
 import torch
-import torchvision.models as models
 import skimage.io
 
 from torchvision import transforms as trn
@@ -100,12 +99,12 @@ if __name__ == "__main__":
 
   # input json
   parser.add_argument('--input_json', required=True, help='input json file to process into hdf5')
-  parser.add_argument('--output_dir', default='data', help='output h5 file')
+  parser.add_argument('--output_dir', default='data/resnet152', help='output h5 file')
 
   # options
   parser.add_argument('--images_root', default='', help='root location in which images are stored, to be prepended to file_path in input json')
   parser.add_argument('--att_size', default=14, type=int, help='14x14 or 7x7')
-  parser.add_argument('--model', default='resnet101', type=str, help='resnet101, resnet152')
+  parser.add_argument('--model', default='resnet152', type=str, help='resnet101, resnet152')
   parser.add_argument('--model_root', default='./data/imagenet_weights', type=str, help='model root')
 
   args = parser.parse_args()

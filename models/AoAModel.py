@@ -139,6 +139,7 @@ class AoA_Decoder_Core(nn.Module):
 
         if self.decoder_type == 'AoA':
             # AoA layer
+            # nn.GLU Applies the gated linear unit function.
             self.att2ctx = nn.Sequential(nn.Linear(self.d_model * opt.multi_head_scale + opt.rnn_size, 2 * opt.rnn_size), nn.GLU())
         elif self.decoder_type == 'LSTM':
             # LSTM layer
