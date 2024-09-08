@@ -3,23 +3,17 @@ from __future__ import division
 from __future__ import print_function
 
 import torch
-import torch.nn as nn
-import torch.optim as optim
-
-import numpy as np
 
 import time
-import os
-from six.moves import cPickle
+
 import traceback
 
 import opts
 import models
 from dataloader import *
-import skimage.io
 import eval_utils
 import misc.utils as utils
-from misc.rewards import init_scorer, get_self_critical_reward
+from misc.rewards import init_scorer
 from misc.loss_wrapper import LossWrapper
 
 try:

@@ -3,14 +3,11 @@ from __future__ import division
 from __future__ import print_function
 
 import json
-import h5py
 import os
 import numpy as np
-import random
 import torch
 import skimage
 import skimage.io
-import scipy.misc
 
 from torchvision import transforms as trn
 preprocess = trn.Compose([

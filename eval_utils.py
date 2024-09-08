@@ -3,16 +3,9 @@ from __future__ import division
 from __future__ import print_function
 
 import torch
-import torch.nn as nn
-
 import numpy as np
 import json
-from json import encoder
-import random
-import string
-import time
 import os
-import sys
 import misc.utils as utils
 
 bad_endings = ['a','an','the','in','for','at','of','with','before','after','on','upon','near','to','is','are','am']

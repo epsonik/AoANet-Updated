@@ -30,11 +30,7 @@ from __future__ import print_function
 import os
 import json
 import argparse
-from random import shuffle, seed
-import string
-# non-standard dependencies:
-import h5py
-from six.moves import cPickle
+from random import seed
 import numpy as np
 import torch
 import skimage.io
@@ -75,7 +71,7 @@ def main(params):
     # load the image
     print(img['filename'])
     I = skimage.io.imread(os.path.join(params['images_root'], img['filepath'], img['filename']))
-    # handle grayscale input images
+    # handle grayscale  input images
     if len(I.shape) == 2:
       I = I[:,:,np.newaxis]
       I = np.concatenate((I,I,I), axis=2)

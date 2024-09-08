@@ -3,10 +3,7 @@ from __future__ import division
 from __future__ import print_function
 
 import numpy as np
-import time
-import misc.utils as utils
 from collections import OrderedDict
-import torch
 
 import sys
 sys.path.append("cider")
