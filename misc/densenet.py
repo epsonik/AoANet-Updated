@@ -6,6 +6,7 @@ class DenseNet(torchvision.models.densenet.DenseNet):
         super(DenseNet, self).__init__(block, layers, num_classes)
         maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=0,
                                     ceil_mode=True) # change
+        print(getattr(self,'features'))
         getattr(self,'features')['pool0'] = maxpool
         # fine tune 2, 3, 4
         for i in range(2, 4):
