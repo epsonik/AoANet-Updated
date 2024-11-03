@@ -50,11 +50,8 @@ def main(params):
   import densenet
   # from resnet_utils import myResnet
   from densenet_utils import myDensenet
-  # net = getattr(densenet, params['model'])()
-  # net.load_state_dict(torch.load(os.path.join(params['model_root'],params['model']+'.pth')))
-
-  net = torchvision.models.densenet121(pretrained=False).cuda()
-  # net.load_state_dict(torch.load(os.path.join(params['model_root'],params['model']+'.pth')))
+  net = getattr(densenet, params['model'])()
+  net.load_state_dict(torch.load(os.path.join(params['model_root'],params['model']+'.pth')))
 
   my_densenet = myDensenet(net)
   my_densenet.cuda()
