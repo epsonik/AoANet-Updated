@@ -54,7 +54,7 @@ def main(params):
   # net.load_state_dict(torch.load(os.path.join(params['model_root'],params['model']+'.pth')))
 
   net = torchvision.models.densenet121(pretrained=False).cuda()
-  net.load_state_dict(torch.load(os.path.join(params['model_root'],params['model']+'.pth')))
+  # net.load_state_dict(torch.load(os.path.join(params['model_root'],params['model']+'.pth')))
 
   my_densenet = myDensenet(net)
   my_densenet.cuda()
