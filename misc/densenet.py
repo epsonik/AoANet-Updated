@@ -1,7 +1,7 @@
 import torch.nn as nn
 import torchvision.models.densenet
 
-class DenseNet(torchvision.models.densenet):
+class DenseNet(torchvision.models.densenet.DenseNet):
     def __init__(self, block, layers, num_classes=64):
         super(DenseNet, self).__init__(block, layers, num_classes)
         maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=0,
