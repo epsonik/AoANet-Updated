@@ -67,7 +67,7 @@ def main(params):
     os.mkdir(dir_fc)
   if not os.path.isdir(dir_att):
     os.mkdir(dir_att)
-
+  print("Loading images")
   for i,img in enumerate(imgs):
     # load the image
     print(img['filename'])
