@@ -1,5 +1,5 @@
 import torch.nn as nn
-import torchvision.models.densent
+import torchvision.models.densenet
 
 class DenseNet(torchvision.models.densenet.DenseNet):
     def __init__(self, block, layers, num_classes=64):
