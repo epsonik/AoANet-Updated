@@ -34,8 +34,9 @@ from random import seed
 import numpy as np
 import torch
 import skimage.io
-
+import torchvision
 from torchvision import transforms as trn
+
 preprocess = trn.Compose([
         #trn.ToTensor(),
         trn.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
@@ -49,8 +50,12 @@ def main(params):
   import densenet
   # from resnet_utils import myResnet
   from densenet_utils import myDensenet
-  net = getattr(densenet, params['model'])()
+  # net = getattr(densenet, params['model'])()
+  # net.load_state_dict(torch.load(os.path.join(params['model_root'],params['model']+'.pth')))
+
+  net = torchvision.models.densenet121(pretrained=False).cuda()
   net.load_state_dict(torch.load(os.path.join(params['model_root'],params['model']+'.pth')))
+
   my_densenet = myDensenet(net)
   my_densenet.cuda()
   my_densenet.eval()
@@ -99,7 +104,7 @@ if __name__ == "__main__":
   parser.add_argument('--output_dir', default='data/densenet121', help='output h5 file')
 
   # options
-  parser.add_argument('--images_root', default='/mnt/dysk2/dane/coco2014', help='root location in which images are stored, to be prepended to file_path in input json')
+  parser.add_argument('--images_root', default='/mnt/dysk2/dane/coco2014', help='root location in which images are stor ed, to be prepended to file_path in input json')
   parser.add_argument('--att_size', default=14, type=int, help='14x14 or 7x7')
   parser.add_argument('--model', default='densenet121', type=str, help='resnet101, resnet152')
   parser.add_argument('--model_root', default='./data/imagenet_weights', type=str, help='model root')
