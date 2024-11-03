@@ -9,8 +9,8 @@ class DenseNet(torchvision.models.densenet.DenseNet):
         getattr(self,'features').pool0 = maxpool
         # fine tune 2, 3, 4
         for i in range(2, 5):
-            getattr(self.features, 'denseblock%d'%i)[0].conv1.stride = (2,2)
-            getattr(self.features, 'denseblock%d'%i)[0].conv2.stride = (1,1)
+            getattr(self.features, 'denseblock%d'%i).denselayer1.conv1.stride = (2,2)
+            getattr(self.features, 'denseblock%d'%i).denselayer1.conv2.stride = (1,1)
 
 def densenet121(pretrained=False):
     model = DenseNet(32, (6, 12, 24, 16))
