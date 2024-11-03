@@ -19,8 +19,8 @@ python train.py --id $id \
     --label_smoothing 0.2 \
     --input_json data/cocotalk.json \
     --input_label_h5 data/cocotalk_label.h5 \
-    --input_fc_dir  data/cocotalk_resnet152/cocotalk_fc \
-    --input_att_dir  data/cocotalk_resnet152/cocotalk_att  \
+    --input_fc_dir  data/cocotalk_densenet121/cocotalk_fc \
+    --input_att_dir  data/cocotalk_densenet121/cocotalk_att  \
     --input_box_dir  data/cocobu_box \
     --seq_per_img 5 \
     --batch_size 10 \
@@ -55,8 +55,8 @@ python train.py --id $id \
     --dropout_aoa 0.3 \
     --input_json data/cocotalk.json \
     --input_label_h5 data/cocotalk_label.h5 \
-    --input_fc_dir  data/cocotalk_resnet152/cocotalk_fc \
-    --input_att_dir  data/cocotalk_resnet152/cocotalk_att  \
+    --input_fc_dir  data/cocotalk_densenet121/cocotalk_fc \
+    --input_att_dir  data/cocotalk_densenet121/cocotalk_att  \
     --input_box_dir  data/cocobu_box \
     --seq_per_img 5 \
     --batch_size 10 \

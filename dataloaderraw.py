@@ -30,11 +30,11 @@ class DataLoaderRaw():
 
         # Load resnet
         self.cnn_model = opt.get('cnn_model', 'resnet101')
-        self.my_resnet = getattr(misc.resnet, self.cnn_model)()
-        self.my_resnet.load_state_dict(torch.load('./data/imagenet_weights/'+self.cnn_model+'.pth'))
-        self.my_resnet = myResnet(self.my_resnet)
-        self.my_resnet.cuda()
-        self.my_resnet.eval()
+        self.my_densenet = getattr(misc.densenet, self.cnn_model)()
+        self.my_densenet.load_state_dict(torch.load('./data/imagenet_weights/'+self.cnn_model+'.pth'))
+        self.my_densenet = myResnet(self.my_densenet)
+        self.my_densenet.cuda()
+        self.my_densenet.eval()
 
 
 
@@ -107,7 +107,7 @@ class DataLoaderRaw():
             img = torch.from_numpy(img.transpose([2,0,1])).cuda()
             img = preprocess(img)
             with torch.no_grad():
-                tmp_fc, tmp_att = self.my_resnet(img)
+                tmp_fc, tmp_att = self.my_densenet(img)
 
             fc_batch[i] = tmp_fc.data.cpu().float().numpy()
             att_batch[i] = tmp_att.data.cpu().float().numpy()

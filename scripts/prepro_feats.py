@@ -46,13 +46,14 @@ import sys
 def main(params):
   print("start")
   sys.path.append("./misc")
-  import resnet
-  from resnet_utils import myResnet
-  net = getattr(resnet, params['model'])()
+  import densenet
+  # from resnet_utils import myResnet
+  from densenet_utils import myDensenet
+  net = getattr(densenet, params['model'])()
   net.load_state_dict(torch.load(os.path.join(params['model_root'],params['model']+'.pth')))
-  my_resnet = myResnet(net)
-  my_resnet.cuda()
-  my_resnet.eval()
+  my_densenet = myDensenet(net)
+  my_densenet.cuda()
+  my_densenet.eval()
 
   imgs = json.load(open(params['input_json'], 'r'))
   imgs = imgs['images']
@@ -80,7 +81,7 @@ def main(params):
     I = torch.from_numpy(I.transpose([2,0,1])).cuda()
     I = preprocess(I)
     with torch.no_grad():
-      tmp_fc, tmp_att = my_resnet(I, params['att_size'])
+      tmp_fc, tmp_att = my_densenet(I, params['att_size'])
     # write to pkl
     np.save(os.path.join(dir_fc, str(img['cocoid'])), tmp_fc.data.cpu().float().numpy())
     np.savez_compressed(os.path.join(dir_att, str(img['cocoid'])), feat=tmp_att.data.cpu().float().numpy())
@@ -95,12 +96,12 @@ if __name__ == "__main__":
 
   # input json
   parser.add_argument('--input_json', required=True, help='input json file to process into hdf5')
-  parser.add_argument('--output_dir', default='data/resnet152', help='output h5 file')
+  parser.add_argument('--output_dir', default='data/densenet121', help='output h5 file')
 
   # options
   parser.add_argument('--images_root', default='', help='root location in which images are stored, to be prepended to file_path in input json')
   parser.add_argument('--att_size', default=14, type=int, help='14x14 or 7x7')
-  parser.add_argument('--model', default='resnet152', type=str, help='resnet101, resnet152')
+  parser.add_argument('--model', default='densenet121', type=str, help='resnet101, resnet152')
   parser.add_argument('--model_root', default='./data/imagenet_weights', type=str, help='model root')
 
   args = parser.parse_args()
