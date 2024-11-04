@@ -47,10 +47,10 @@ import sys
 def main(params):
   print("start")
   sys.path.append("./misc")
-  from densenet import DenseNet121
+  import densenet
   # from resnet_utils import myResnet
   from densenet_utils import myDensenet
-  net = DenseNet121()
+  net = getattr(densenet, params['model'])()
   my_densenet = myDensenet(net)
   my_densenet.cuda()
   my_densenet.eval()
