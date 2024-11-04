@@ -6,18 +6,19 @@ import numpy as np
 from collections import OrderedDict
 
 import sys
-sys.path.append("cider")
-from pyciderevalcap.ciderD.ciderD import CiderD
 sys.path.append("coco-caption")
+sys.path.append("cider")
+
+from pycocoevalcap.cider.cider import Cider
 from pycocoevalcap.bleu.bleu import Bleu
 
-CiderD_scorer = None
+Cider_scorer = None
 Bleu_scorer = None
 #CiderD_scorer = CiderD(df='corpus')
 
 def init_scorer(cached_tokens):
-    global CiderD_scorer
-    CiderD_scorer = CiderD_scorer or CiderD(df=cached_tokens)
+    global Cider_scorer
+    Cider_scorer = Cider_scorer or Cider(df=cached_tokens)
     global Bleu_scorer
     Bleu_scorer = Bleu_scorer or Bleu(4)
 
@@ -50,7 +51,7 @@ def get_self_critical_reward(greedy_res, data_gts, gen_result, opt):
     res__ = {i: res[i] for i in range(2 * batch_size)}
     gts = {i: gts[i % batch_size // seq_per_img] for i in range(2 * batch_size)}
     if opt.cider_reward_weight > 0:
-        _, cider_scores = CiderD_scorer.compute_score(gts, res_)
+        _, cider_scores = Cider_scorer.compute_score(gts, res_)
         print('Cider scores:', _)
     else:
         cider_scores = 0
