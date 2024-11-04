@@ -76,9 +76,8 @@ def main(params):
     if len(I.shape) == 2:
       I = I[:,:,np.newaxis]
       I = np.concatenate((I,I,I), axis=2)
-
-    I = I.astype('float32')/255.0
     img = np.array(Image.fromarray(I).resize((256, 256)))
+    I = I.astype('float32')/255.0
     I = torch.from_numpy(I.transpose([2,0,1])).cuda()
     I = preprocess(I)
     with torch.no_grad():
