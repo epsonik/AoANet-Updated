@@ -25,9 +25,9 @@ def add_summary_value(writer, key, value, iteration):
 
 def train(opt):
     sys.path.append("./misc")
-    import misc.utils as utils
-    from misc.rewards import init_scorer
-    from misc.loss_wrapper import LossWrapper
+    import utils as utils
+    from rewards import init_scorer
+    from loss_wrapper import LossWrapper
 
     # Deal with feature things before anything
     opt.use_fc, opt.use_att = utils.if_use_feat(opt.caption_model)
