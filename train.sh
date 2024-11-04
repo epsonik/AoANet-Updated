@@ -22,6 +22,8 @@ python train.py --id $id \
     --input_fc_dir  data/densenet121_fc \
     --input_att_dir  data/densenet121_att  \
     --input_box_dir  data/cocobu_box \
+    --fc_feat_size 1024 \
+    --att_feat_size 1024 \
     --seq_per_img 5 \
     --batch_size 10 \
     --beam_size 1 \
@@ -58,6 +60,8 @@ python train.py --id $id \
     --input_fc_dir  data/densenet121_fc \
     --input_att_dir  data/densenet121_att  \
     --input_box_dir  data/cocobu_box \
+    --fc_feat_size 1024 \
+    --att_feat_size 1024 \
     --seq_per_img 5 \
     --batch_size 10 \
     --beam_size 1 \
