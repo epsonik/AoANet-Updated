@@ -37,7 +37,6 @@ import skimage.io
 import torchvision
 from torchvision import transforms as trn
 
-from misc.densenet import DenseNet121
 
 preprocess = trn.Compose([
         #trn.ToTensor(),
