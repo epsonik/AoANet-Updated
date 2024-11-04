@@ -300,7 +300,7 @@ densenet161: num_init_features=96, growth_rate=48, block_config=(6, 12, 36, 24)
 """
 
 
-def densenet121(num_classes, loss='softmax', pretrained=True, **kwargs):
+def densenet121(num_classes=1000, loss='softmax', pretrained=True, **kwargs):
     model = DenseNet(
         num_classes=num_classes,
         loss=loss,
