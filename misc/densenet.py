@@ -1,5 +1,5 @@
 import torch.nn as nn
-import torchvision.models.densenet
+import torchvision
 
 
 class DenseNet121(nn.Module):

@@ -34,7 +34,6 @@ from random import seed
 import numpy as np
 import torch
 import skimage.io
-import torchvision
 from torchvision import transforms as trn
 
 
@@ -48,7 +47,7 @@ import sys
 def main(params):
   print("start")
   sys.path.append("./misc")
-  import densenet
+  from densenet import DenseNet121
   # from resnet_utils import myResnet
   from densenet_utils import myDensenet
   net = DenseNet121()
