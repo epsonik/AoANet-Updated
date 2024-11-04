@@ -37,6 +37,8 @@ import skimage.io
 import torchvision
 from torchvision import transforms as trn
 
+from misc.densenet import DenseNet121
+
 preprocess = trn.Compose([
         #trn.ToTensor(),
         trn.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
@@ -50,9 +52,7 @@ def main(params):
   import densenet
   # from resnet_utils import myResnet
   from densenet_utils import myDensenet
-  net = getattr(densenet, params['model'])()
-  net.load_state_dict(torch.load(os.path.join(params['model_root'],params['model']+'.pth')))
-
+  net = DenseNet121()
   my_densenet = myDensenet(net)
   my_densenet.cuda()
   my_densenet.eval()
