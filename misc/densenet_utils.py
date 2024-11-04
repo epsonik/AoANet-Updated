@@ -9,7 +9,7 @@ class myDensenet(nn.Module):
 
     def forward(self, img, att_size=14):
         x = img.unsqueeze(0)
-        x = self.densenet.model.features(x)
+        x = self.densenet.model(x)
         fc = x.mean(3).mean(2).squeeze()
         att = F.adaptive_avg_pool2d(x, [att_size, att_size]).squeeze().permute(1, 2, 0)
 
