@@ -50,7 +50,7 @@ def main(params):
   import densenet
   # from resnet_utils import myResnet
   from densenet_utils import myDensenet
-  net = getattr(densenet, params['model'])()
+  net = DenseNet121()
   my_densenet = myDensenet(net)
   my_densenet.cuda()
   my_densenet.eval()
