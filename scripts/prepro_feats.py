@@ -35,7 +35,7 @@ import numpy as np
 import torch
 import skimage.io
 from torchvision import transforms as trn
-
+from PIL import Image
 
 preprocess = trn.Compose([
         #trn.ToTensor(),
@@ -78,6 +78,7 @@ def main(params):
       I = np.concatenate((I,I,I), axis=2)
 
     I = I.astype('float32')/255.0
+    img = np.array(Image.fromarray(I).resize((256, 256)))
     I = torch.from_numpy(I.transpose([2,0,1])).cuda()
     I = preprocess(I)
     with torch.no_grad():
