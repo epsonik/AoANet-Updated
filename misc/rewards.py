@@ -3,14 +3,11 @@ from __future__ import division
 from __future__ import print_function
 
 import numpy as np
-import time
-import misc.utils as utils
 from collections import OrderedDict
-import torch
 
 import sys
 
-sys.path.append("cider")
+sys.path.append("pyciderevalcap")
 from pyciderevalcap.ciderD.ciderD import CiderD
 
 sys.path.append("coco-caption")
@@ -19,8 +16,6 @@ from pycocoevalcap.bleu.bleu import Bleu
 CiderD_scorer = None
 Bleu_scorer = None
 
-
-# CiderD_scorer = CiderD(df='corpus')
 
 def init_scorer(cached_tokens):
     global CiderD_scorer
