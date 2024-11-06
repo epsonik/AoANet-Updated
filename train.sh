@@ -43,7 +43,7 @@ python -u train.py --id $id \
     --scheduled_sampling_max_prob 0.5 \
     --learning_rate_decay_every 3
 
-python train.py --id $id \
+python -u train.py --id $id \
     --caption_model aoa \
     --refine 1 \
     --refine_aoa 1 \
