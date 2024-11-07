@@ -1,5 +1,5 @@
 CUDA_VISIBLE_DEVICES=0
-python eval.py --model log/log_aoanet_rl/model.pth \
+python -u eval.py --model log/log_aoanet_rl/model.pth \
     --infos_path log/log_aoanet_rl/infos_aoanet.pkl \
     --dump_images 0 \
     --dump_json 1 \

@@ -19,11 +19,11 @@ python -u train.py --id $id \
     --label_smoothing 0.2 \
     --input_json data/cocotalk.json \
     --input_label_h5 data/cocotalk_label.h5 \
-    --input_fc_dir  data/densenet121_fc \
-    --input_att_dir  data/densenet121_att  \
+    --input_fc_dir  data/densenet201_fc \
+    --input_att_dir  data/densenet201_att  \
     --input_box_dir  data/cocobu_box \
-    --fc_feat_size 1024 \
-    --att_feat_size 1024 \
+    --fc_feat_size 1920 \
+    --att_feat_size 1920 \
     --seq_per_img 5 \
     --batch_size 10 \
     --beam_size 1 \
@@ -57,11 +57,11 @@ python -u train.py --id $id \
     --dropout_aoa 0.3 \
     --input_json data/cocotalk.json \
     --input_label_h5 data/cocotalk_label.h5 \
-    --input_fc_dir  data/densenet121_fc \
-    --input_att_dir  data/densenet121_att  \
+    --input_fc_dir  data/densenet201_fc \
+    --input_att_dir  data/densenet201_att  \
     --input_box_dir  data/cocobu_box \
-    --fc_feat_size 1024 \
-    --att_feat_size 1024 \
+    --fc_feat_size 1920 \
+    --att_feat_size 1920 \
     --seq_per_img 5 \
     --batch_size 10 \
     --beam_size 1 \

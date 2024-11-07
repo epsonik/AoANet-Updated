@@ -47,10 +47,10 @@ import sys
 def main(params):
   print("start")
   sys.path.append("./misc")
-  from densenet import DenseNet121
+  from densenet import DenseNet201
   # from resnet_utils import myResnet
   from densenet_utils import myDensenet
-  net = DenseNet121()
+  net = DenseNet201()
   my_densenet = myDensenet(net)
   my_densenet.cuda()
   my_densenet.eval()
@@ -96,12 +96,12 @@ if __name__ == "__main__":
 
   # input json
   parser.add_argument('--input_json', default='data/dataset_coco.json', help='input json file to process into hdf5')
-  parser.add_argument('--output_dir', default='data/densenet121', help='output h5 file')
+  parser.add_argument('--output_dir', default='data/densenet201', help='output h5 file')
 
   # options
   parser.add_argument('--images_root', default='/mnt/dysk2/dane/coco2014', help='root location in which images are stor ed, to be prepended to file_path in input json')
   parser.add_argument('--att_size', default=14, type=int, help='14x14 or 7x7')
-  parser.add_argument('--model', default='densenet121', type=str, help='resnet101, resnet152')
+  parser.add_argument('--model', default='densenet201', type=str, help='resnet101, resnet152')
   parser.add_argument('--model_root', default='./data/imagenet_weights', type=str, help='model root')
 
   args = parser.parse_args()
