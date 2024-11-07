@@ -47,8 +47,7 @@ import sys
 def main(params):
   print("start")
   sys.path.append("./misc")
-  from densenet import DenseNet201
-  # from resnet_utils import myResnet
+  from densenet201 import DenseNet201
   from densenet_utils import myDensenet
   net = DenseNet201()
   my_densenet = myDensenet(net)
