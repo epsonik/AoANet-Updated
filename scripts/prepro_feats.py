@@ -47,9 +47,9 @@ import sys
 def main(params):
   print("start")
   sys.path.append("./misc")
-  from densenet201 import DenseNet201
+  from densenet161 import DenseNet161
   from densenet_utils import myDensenet
-  net = DenseNet201()
+  net = DenseNet161()
   my_densenet = myDensenet(net)
   my_densenet.cuda()
   my_densenet.eval()
