@@ -2,13 +2,6 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import json
-import numpy as np
-
-import time
-import os
-from six.moves import cPickle
-
 import opts
 import models
 from dataloader import *
@@ -22,7 +15,7 @@ parser = argparse.ArgumentParser()
 # Input paths
 parser.add_argument('--model', type=str, default='',
                     help='path to model to evaluate')
-parser.add_argument('--cnn_model', type=str, default='resnet101',
+parser.add_argument('--cnn_model', type=str, default='densenet161',
                     help='resnet101, resnet152')
 parser.add_argument('--infos_path', type=str, default='',
                     help='path to infos to evaluate')

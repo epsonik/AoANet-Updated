@@ -15,9 +15,6 @@ preprocess = trn.Compose([
         trn.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
 ])
 
-from misc.resnet_utils import myResnet
-import misc.resnet
-
 class DataLoaderRaw():
     
     def __init__(self, opt):
@@ -28,11 +25,11 @@ class DataLoaderRaw():
         self.batch_size = opt.get('batch_size', 1)
         self.seq_per_img = 1
 
-        # Load resnet
-        self.cnn_model = opt.get('cnn_model', 'resnet101')
-        self.my_densenet = getattr(misc.densenet, self.cnn_model)()
-        self.my_densenet.load_state_dict(torch.load('./data/imagenet_weights/'+self.cnn_model+'.pth'))
-        self.my_densenet = myResnet(self.my_densenet)
+        # Load densenet
+        from densenet161 import DenseNet161
+        from densenet_utils import myDensenet
+        net = DenseNet161()
+        self.my_densenet = myDensenet(net)
         self.my_densenet.cuda()
         self.my_densenet.eval()
 
