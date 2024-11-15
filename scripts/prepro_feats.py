@@ -47,9 +47,9 @@ import sys
 def main(params):
   print("start")
   sys.path.append("./misc")
-  from densenet161 import DenseNet161
+  from inception import Inception
   from densenet_utils import myDensenet
-  net = DenseNet161()
+  net = Inception()
   my_densenet = myDensenet(net)
   my_densenet.cuda()
   my_densenet.eval()
