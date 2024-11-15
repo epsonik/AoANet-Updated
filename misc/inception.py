@@ -9,6 +9,6 @@ class Inception(nn.Module):
         inception.aux_logits = False
         inception.AuxLogits = None
         modules = list(inception.children())[:-3]
-        self.inception = nn.Sequential(*modules)
+        inception = nn.Sequential(*modules)
 
         self.model = inception
