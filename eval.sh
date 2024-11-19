@@ -8,4 +8,4 @@ python -u eval.py --model log/log_aoanet_rl/model.pth \
     --beam_size 3 \
     --batch_size 400 \
     --split test \
-    --cnn_model densenet201 \
+    --cnn_model densenet161 \
