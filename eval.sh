@@ -1,5 +1,5 @@
-CUDA_VISIBLE_DEVICES=0
 #!/bin/bash
+CUDA_VISIBLE_DEVICES=0
 for i in $(seq 285000 3000 453000)
 do
   python -u eval.py --model log/log_aoanet_rl/model-$i.pth \
