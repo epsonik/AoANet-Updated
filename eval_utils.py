@@ -18,7 +18,7 @@ def count_bad(sen):
     else:
         return 0
 
-def language_eval(dataset, preds, model_id, split):
+def language_eval(dataset, preds, model_id, split, name=''):
     import sys
     sys.path.append("coco-caption")
     if 'coco' in dataset:
@@ -58,7 +58,7 @@ def language_eval(dataset, preds, model_id, split):
         imgToEval[image_id]['caption'] = caption
     
     out['bad_count_rate'] = sum([count_bad(_['caption']) for _ in preds_filt]) / float(len(preds_filt))
-    outfile_path = os.path.join('eval_results/', model_id + '_' + split + '.json')
+    outfile_path = os.path.join('eval_results/', model_id +"_"+name+ '_' + split + '.json')
     with open(outfile_path, 'w') as outfile:
         json.dump({'overall': out, 'imgToEval': imgToEval}, outfile)
 
@@ -150,8 +150,9 @@ def eval_split(model, crit, loader, eval_kwargs={}):
             break
 
     lang_stats = None
+    name=eval_kwargs.get('model', None).split("/")[-1].split(".")[-2]
     if lang_eval == 1:
-        lang_stats = language_eval(dataset, predictions, eval_kwargs['id'], split)
+        lang_stats = language_eval(dataset, predictions, eval_kwargs['id'], split, name)
 
     # Switch back to training mode
     model.train()
