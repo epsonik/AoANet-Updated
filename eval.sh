@@ -1,6 +1,6 @@
 #!/bin/bash
 CUDA_VISIBLE_DEVICES=0
-for i in $(seq 285000 6000 453000)
+for i in $(seq 6000 6000 282000)
 do
     python -u eval.py --model log/log_aoanet/model-$i.pth \
       --infos_path log/log_aoanet/infos_aoanet-$i.pkl \
