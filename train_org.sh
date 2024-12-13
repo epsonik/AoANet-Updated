@@ -4,7 +4,7 @@ start_from=""
 else
 start_from="--start_from log/log_$id"
 fi
-python train.py --id $id \
+python -u train.py --id $id \
     --caption_model aoa \
     --refine 1 \
     --refine_aoa 1 \
@@ -19,9 +19,11 @@ python train.py --id $id \
     --label_smoothing 0.2 \
     --input_json data/cocotalk.json \
     --input_label_h5 data/cocotalk_label.h5 \
-    --input_fc_dir  data/cocobu/cocobu_fc \
-    --input_att_dir  data/cocobu/cocobu_att  \
-    --input_box_dir  data/cocobu/cocobu_box \
+    --input_fc_dir  data/densenet201_fc \
+    --input_att_dir  data/densenet201_att \
+    --input_box_dir  data/cocobu_box \
+    --fc_feat_size 1920 \
+    --att_feat_size 1920 \
     --seq_per_img 5 \
     --batch_size 10 \
     --beam_size 1 \
@@ -42,7 +44,7 @@ python train.py --id $id \
     --scheduled_sampling_max_prob 0.5 \
     --learning_rate_decay_every 3
 
-python train.py --id $id \
+python -u train.py --id $id \
     --caption_model aoa \
     --refine 1 \
     --refine_aoa 1 \
@@ -56,9 +58,11 @@ python train.py --id $id \
     --dropout_aoa 0.3 \
     --input_json data/cocotalk.json \
     --input_label_h5 data/cocotalk_label.h5 \
-    --input_fc_dir  data/cocobu/cocobu_fc \
-    --input_att_dir  data/cocobu/cocobu_att  \
-    --input_box_dir  data/cocobu/cocobu_box \
+    --input_fc_dir  data/densenet201_fc \
+    --input_att_dir  data/densenet201_att \
+    --input_box_dir  data/cocobu_box \
+    --fc_feat_size 1920 \
+    --att_feat_size 1920 \
     --seq_per_img 5 \
     --batch_size 10 \
     --beam_size 1 \
