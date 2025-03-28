@@ -19,11 +19,11 @@ python -u train.py --id $id \
     --label_smoothing 0.2 \
     --input_json data/cocotalk.json \
     --input_label_h5 data/cocotalk_label.h5 \
-    --input_fc_dir  data/inception_fc \
-    --input_att_dir  data/inception_att  \
-    --input_box_dir  data/cocobu_box \
-    --fc_feat_size 2048 \
-    --att_feat_size 2048 \
+    --input_fc_dir  data/regnet16_fc \
+    --input_att_dir  data/regnet16_att  \
+    --input_box_dir  data/regnet16_box \
+    --fc_feat_size 3024 \
+    --att_feat_size 3024 \
     --seq_per_img 5 \
     --batch_size 10 \
     --beam_size 1 \
@@ -55,13 +55,12 @@ python -u train.py --id $id \
     --mean_feats 1 \
     --ctx_drop 1 \
     --dropout_aoa 0.3 \
-    --input_json data/cocotalk.json \
     --input_label_h5 data/cocotalk_label.h5 \
-    --input_fc_dir  data/inception_fc \
-    --input_att_dir  data/inception_att  \
-    --input_box_dir  data/cocobu_box \
-    --fc_feat_size 2048 \
-    --att_feat_size 2048 \
+    --input_fc_dir  data/regnet16_fc \
+    --input_att_dir  data/regnet16_att  \
+    --input_box_dir  data/regnet16_box \
+    --fc_feat_size 3024 \
+    --att_feat_size 3024 \
     --seq_per_img 5 \
     --batch_size 10 \
     --beam_size 1 \
