@@ -165,7 +165,7 @@ def eval_split(model, crit, loader, eval_kwargs={}, train_mode=True):
     name = eval_kwargs.get('model', None).split("/")[-1].split(".")[-2] + "_"
 
     if lang_eval == 1:
-        lang_stats = language_eval(dataset, predictions, eval_kwargs['id'], split, name)
+        lang_stats = language_eval(dataset, predictions, eval_kwargs['id'], split)
 
     # Switch back to training mode
     model.train()
