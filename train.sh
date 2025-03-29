@@ -21,7 +21,6 @@ python -u train.py --id $id \
     --input_label_h5 data/cocotalk_label.h5 \
     --input_fc_dir  data/regnet16_fc \
     --input_att_dir  data/regnet16_att  \
-    --input_box_dir  data/regnet16_box \
     --fc_feat_size 3024 \
     --att_feat_size 3024 \
     --seq_per_img 5 \
