@@ -21,6 +21,7 @@ python -u train.py --id $id \
     --input_label_h5 data/cocotalk_label.h5 \
     --input_fc_dir  data/regnet16_fc \
     --input_att_dir  data/regnet16_att  \
+    --input_box_dir  data/regnet16_box \
     --fc_feat_size 3024 \
     --att_feat_size 3024 \
     --seq_per_img 5 \
@@ -54,9 +55,10 @@ python -u train.py --id $id \
     --mean_feats 1 \
     --ctx_drop 1 \
     --dropout_aoa 0.3 \
+    --input_json data/cocotalk.json \
     --input_label_h5 data/cocotalk_label.h5 \
     --input_fc_dir  data/regnet16_fc \
-    --input_att_dir  data/regnet16_att \
+    --input_att_dir  data/regnet16_att  \
     --input_box_dir  data/regnet16_box \
     --fc_feat_size 3024 \
     --att_feat_size 3024 \
@@ -76,4 +78,4 @@ python -u train.py --id $id \
     --self_critical_after 0 \
     --learning_rate_decay_start -1 \
     --scheduled_sampling_start -1 \
-    --reduce_on_plateau 
+    --reduce_on_plateau
