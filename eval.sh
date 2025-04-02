@@ -5,7 +5,7 @@ python -u eval.py --model log/log_aoanet_rl/model-best.pth \
     --dump_json 1 \
     --num_images -1 \
     --language_eval 1 \
-    --beam_size 3 \
+    --beam_size 4 \
     --batch_size 400 \
     --split test \
     --cnn_model regnet16 \
