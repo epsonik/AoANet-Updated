@@ -1,29 +1,29 @@
-id="aoanet"
+id="adaatt"
 if [ ! -f log/log_$id/infos_$id.pkl ]; then
 start_from=""
 else
 start_from="--start_from log/log_$id"
 fi
 python -u train.py --id $id \
-    --caption_model aoa \
-    --refine 1 \
-    --refine_aoa 1 \
+    --caption_model adaatt \
+    --refine 0 \
+    --refine_aoa 0 \
     --use_ff 0 \
-    --decoder_type AoA \
-    --use_multi_head 2 \
-    --num_heads 8 \
-    --multi_head_scale 1 \
-    --mean_feats 1 \
-    --ctx_drop 1 \
+    --decoder_type LSTM \
+    --use_multi_head 0 \
+    --num_heads 0 \
+    --multi_head_scale 0 \
+    --mean_feats 0 \
+    --ctx_drop 0 \
     --dropout_aoa 0.3 \
     --label_smoothing 0.2 \
     --input_json data/cocotalk.json \
     --input_label_h5 data/cocotalk_label.h5 \
-    --input_fc_dir  data/regnet16_fc \
-    --input_att_dir  data/regnet16_att  \
-    --input_box_dir  data/regnet16_box \
-    --fc_feat_size 3024 \
-    --att_feat_size 3024 \
+    --input_fc_dir  data/inception_fc \
+    --input_att_dir  data/inception_att  \
+    --input_box_dir  data/inception_box \
+    --fc_feat_size 2048 \
+    --att_feat_size 2048 \
     --seq_per_img 5 \
     --batch_size 10 \
     --beam_size 1 \
@@ -44,24 +44,24 @@ python -u train.py --id $id \
     --learning_rate_decay_every 3
 
 python -u train.py --id $id \
-    --caption_model aoa \
-    --refine 1 \
-    --refine_aoa 1 \
+    --caption_model adaatt \
+    --refine 0 \
+    --refine_aoa 0 \
     --use_ff 0 \
-    --decoder_type AoA \
-    --use_multi_head 2 \
-    --num_heads 8 \
-    --multi_head_scale 1 \
-    --mean_feats 1 \
-    --ctx_drop 1 \
+    --decoder_type LSTM \
+    --use_multi_head 0 \
+    --num_heads 0 \
+    --multi_head_scale 0 \
+    --mean_feats 0 \
+    --ctx_drop 0 \
     --dropout_aoa 0.3 \
     --input_json data/cocotalk.json \
     --input_label_h5 data/cocotalk_label.h5 \
-    --input_fc_dir  data/regnet16_fc \
-    --input_att_dir  data/regnet16_att  \
-    --input_box_dir  data/regnet16_box \
-    --fc_feat_size 3024 \
-    --att_feat_size 3024 \
+    --input_fc_dir  data/inception_fc \
+    --input_att_dir  data/inception_att  \
+    --input_box_dir  data/inception_box \
+    --fc_feat_size 2048 \
+    --att_feat_size 2048 \
     --seq_per_img 5 \
     --batch_size 10 \
     --beam_size 1 \
