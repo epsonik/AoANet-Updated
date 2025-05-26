@@ -2,14 +2,14 @@
 CUDA_VISIBLE_DEVICES=0
 for b in resnet152;
 do
-for k in 1;
+for k in 2;
 do
 python -u eval.py --model log/old/$b/log_aoanet/model-best.pth \
     --infos_path log/old/$b/log_aoanet/infos_aoanet.pkl \
     --dump_images 0 \
     --dump_json 1 \
     --num_images -1 \
-    --name ff$b$kff \
+    --name -$b-$k \
     --language_eval 1 \
     --beam_size $k \
     --batch_size 40 \
