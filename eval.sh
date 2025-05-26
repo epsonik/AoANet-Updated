@@ -1,8 +1,8 @@
 #!/bin/bash
 CUDA_VISIBLE_DEVICES=0
-for b in resnet152;
+for b in resnet152 resnet101 regnet inception densenet161 densenet121 densenet201;
 do
-for k in 2;
+for k in 2 3 5 8 1;
 do
 python -u eval.py --model log/old/$b/log_aoanet/model-best.pth \
     --infos_path log/old/$b/log_aoanet/infos_aoanet.pkl \
