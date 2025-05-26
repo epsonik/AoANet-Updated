@@ -79,6 +79,7 @@ def eval_split(model, crit, loader, eval_kwargs={}, train_mode=True):
     lang_eval = eval_kwargs.get('language_eval', 0)
     dataset = eval_kwargs.get('dataset', 'coco')
     beam_size = eval_kwargs.get('beam_size', 1)
+    name = eval_kwargs.get('name', '')
     remove_bad_endings = eval_kwargs.get('remove_bad_endings', 0)
     os.environ["REMOVE_BAD_ENDINGS"] = str(
         remove_bad_endings)  # Use this nasty way to make other code clean since it's a global configuration
@@ -162,7 +163,7 @@ def eval_split(model, crit, loader, eval_kwargs={}, train_mode=True):
 
     lang_stats = None
     if lang_eval == 1:
-        lang_stats = language_eval(dataset, predictions, eval_kwargs['id'], split, eval_kwargs['name'])
+        lang_stats = language_eval(dataset, predictions, eval_kwargs['id'], split, name)
 
     # Switch back to training mode
     model.train()
