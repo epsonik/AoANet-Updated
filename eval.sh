@@ -7,6 +7,6 @@ python -u eval.py --model log/old/resnet152/log_aoanet/model-best.pth \
     --num_images -1 \
     --language_eval 1 \
     --beam_size 3 \
-    --batch_size 400 \
+    --batch_size 40 \
     --split test \
     --cnn_model regnet16 \
