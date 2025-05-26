@@ -63,7 +63,7 @@ def language_eval(dataset, preds, model_id, split, name=''):
         imgToEval[image_id]['caption'] = caption
 
     out['bad_count_rate'] = sum([count_bad(_['caption']) for _ in preds_filt]) / float(len(preds_filt))
-    outfile_path = os.path.join('eval_results/', model_id + "_" + name + split + '.json')
+    outfile_path = os.path.join('eval_results/', model_id + name + split + '.json')
     with open(outfile_path, 'w') as outfile:
         json.dump({'overall': out, 'imgToEval': imgToEval}, outfile)
 
@@ -162,7 +162,7 @@ def eval_split(model, crit, loader, eval_kwargs={}, train_mode=True):
 
     lang_stats = None
     if lang_eval == 1:
-        lang_stats = language_eval(dataset, predictions, eval_kwargs['id'], split)
+        lang_stats = language_eval(dataset, predictions, eval_kwargs['id'], split, eval_kwargs['name'])
 
     # Switch back to training mode
     model.train()

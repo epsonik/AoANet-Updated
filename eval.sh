@@ -1,12 +1,18 @@
+#!/bin/bash
 CUDA_VISIBLE_DEVICES=0
-
-python -u eval.py --model log/old/resnet152/log_aoanet/model-best.pth \
-    --infos_path log/old/resnet152/log_aoanet/infos_aoanet.pkl \
-    --dump_images 0 \
-    --dump_json 1 \
-    --num_images -1 \
-    --language_eval 1 \
-    --beam_size 3 \
-    --batch_size 40 \
-    --split test \
-    --cnn_model regnet16 \
+for b in resnet152 resnet101 regnet inception densenet161 densenet121 densenet201
+for k in 1 2 3 5 8
+do
+  python -u eval.py --model log/old/$b/log_aoanet/model-best.pth \
+      --infos_path log/old/$b/log_aoanet/infos_aoanet.pkl \
+      --dump_images 0 \
+      --dump_json 1 \
+      --num_images -1 \
+      --name _$b_$k_ \
+      --language_eval 1 \
+      --beam_size k \
+      --batch_size 40 \
+      --split test \
+      --cnn_model regnet16 \
+done
+done

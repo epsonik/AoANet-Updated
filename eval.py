@@ -19,6 +19,8 @@ parser.add_argument('--cnn_model', type=str, default='densenet161',
                     help='resnet101, resnet152')
 parser.add_argument('--infos_path', type=str, default='',
                     help='path to infos to evaluate')
+parser.add_argument('--name', type=str, default='',
+                    help='')
 opts.add_eval_options(parser)
 
 opt = parser.parse_args()
