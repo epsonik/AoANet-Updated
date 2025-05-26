@@ -39,7 +39,7 @@ for k in vars(infos['opt']).keys():
     elif k not in ignore:
         if not k in vars(opt):
             vars(opt).update({k: vars(infos['opt'])[k]})  # copy over options from model
-
+print(opt['name'])
 vocab = infos['vocab']  # ix -> word mapping
 
 # Setup the model
