@@ -39,7 +39,6 @@ for k in vars(infos['opt']).keys():
     elif k not in ignore:
         if not k in vars(opt):
             vars(opt).update({k: vars(infos['opt'])[k]})  # copy over options from model
-print(opt['name'])
 vocab = infos['vocab']  # ix -> word mapping
 
 # Setup the model
@@ -65,6 +64,7 @@ loader.ix_to_word = infos['vocab']
 
 # Set sample options
 opt.datset = opt.input_json
+print(opt.name)
 loss, split_predictions, lang_stats = eval_utils.eval_split(model, crit, loader,
                                                             vars(opt))
 
