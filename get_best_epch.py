@@ -11,6 +11,8 @@ infos_path="log/old/inception/log_aoanet/infos_aoanet-best.pkl"
 with open(infos_path, 'rb') as f:
     infos = utils.pickle_load(f)
 
-epoch= getattr(infos['opt'], 'epoch', '')
 print(infos_path)
-print(epoch)
+for k in vars(infos['opt']).keys():
+    print(getattr(infos['opt'], k, ''))
+
+
