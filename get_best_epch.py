@@ -10,7 +10,7 @@ import misc.utils as utils
 infos_path="log/old/inception/log_aoanet/infos_aoanet-best.pkl"
 with open(infos_path, 'rb') as f:
     infos = utils.pickle_load(f)
-
+print(infos)
 epoch = infos.get('epoch', True)
 print(infos_path)
 print(epoch)
