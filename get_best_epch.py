@@ -12,5 +12,5 @@ with open(infos_path, 'rb') as f:
     infos = utils.pickle_load(f)
 
 print(infos['opt'])
-for k in vars(infos['opt']).keys():
+for k in infos['opt'].keys():
    print(infos['opt'][k])
