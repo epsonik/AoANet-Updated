@@ -8,12 +8,13 @@ import misc.utils as utils
 
 
 infos_path="log/old/inception/log_aoanet/infos_aoanet-best.pkl"
+infos={}
 with open(infos_path, 'rb') as f:
     infos = utils.pickle_load(f)
-
 print(infos_path)
-for k in vars(infos['opt']).keys():
-    print(k)
-    print(getattr(infos['opt'], k, ''))
+print(infos.get('epoch', 0))
+# for k in vars(infos['opt']).keys():
+#     print(k)
+#     print(getattr(infos['opt'], k, ''))
 
 
