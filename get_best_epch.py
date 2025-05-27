@@ -13,6 +13,7 @@ with open(infos_path, 'rb') as f:
 
 print(infos_path)
 for k in vars(infos['opt']).keys():
+    print(k)
     print(getattr(infos['opt'], k, ''))
 
 
