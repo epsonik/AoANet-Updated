@@ -1,6 +1,6 @@
 #!/bin/bash
 CUDA_VISIBLE_DEVICES=0
-b=inception;
+b=densenet201;
 for k in 2 3 5 8 1;
 do
 python -u eval.py --model log/old/$b/log_aoanet/model-best.pth \
