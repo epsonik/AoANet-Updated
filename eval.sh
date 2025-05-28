@@ -1,6 +1,6 @@
 #!/bin/bash
 CUDA_VISIBLE_DEVICES=0
-b=resnet101;
+b=resnet152;
 for k in 2 3 5 8 1;
 do
 python -u eval.py --model log/old/$b/log_aoanet_rl/model-best.pth \
@@ -8,7 +8,7 @@ python -u eval.py --model log/old/$b/log_aoanet_rl/model-best.pth \
     --dump_images 0 \
     --dump_json 1 \
     --num_images -1 \
-    --name SffffffffffffffS$bSSHHHHHHHHHHHHH$k \
+    --name resnet152$bSSHHHHHHHHHHHHH$k \
     --language_eval 1 \
     --beam_size $k \
     --batch_size 40 \
