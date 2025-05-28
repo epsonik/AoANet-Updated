@@ -8,7 +8,7 @@ python -u eval.py --model log/old/$b/log_aoanet/model-best.pth \
     --dump_images 0 \
     --dump_json 1 \
     --num_images -1 \
-    --name inception$bSSHHHHHHHHHHHHH$k \
+    --name regnet$bSSHHHHHHHHHHHHH$k \
     --language_eval 1 \
     --beam_size $k \
     --batch_size 40 \
