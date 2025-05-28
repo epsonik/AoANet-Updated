@@ -7,8 +7,8 @@ import argparse
 import misc.utils as utils
 
 
-infos_paths=["log/old/regnet16/log_aoanet/infos_aoanet-best.pkl"]
-infos_paths_rl=["log/old/regnet16/log_aoanet_rl/infos_aoanet-best.pkl"]
+infos_paths=["log/old/regnet/log_aoanet/infos_aoanet-best.pkl"]
+infos_paths_rl=["log/old/regnet/log_aoanet_rl/infos_aoanet-best.pkl"]
 
 for x in infos_paths:
 
