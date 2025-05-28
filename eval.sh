@@ -1,10 +1,10 @@
 #!/bin/bash
 CUDA_VISIBLE_DEVICES=0
-b=inception;
+b=regnet16;
 for k in 2 3 5 8 1;
 do
-python -u eval.py --model log/old/$b/log_aoanet_rl/model-best.pth \
-    --infos_path log/old/$b/log_aoanet_rl/infos_aoanet.pkl \
+python -u eval.py --model log/old/$b/log_aoanet/model-best.pth \
+    --infos_path log/old/$b/log_aoanet/infos_aoanet.pkl \
     --dump_images 0 \
     --dump_json 1 \
     --num_images -1 \
