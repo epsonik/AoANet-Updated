@@ -98,6 +98,29 @@ class AttModel(CaptionModel):
         # For remove bad endding
         self.vocab = opt.vocab
         self.bad_endings_ix = [int(k) for k, v in self.vocab.items() if v in bad_endings]
+        embeddings, embed_dim = load_embeddings(
+            '/mnt/dysk2/dane/glove/glove.6B.300d.txt',
+            word_map=self.vocab,
+            output_folder='.',
+            output_basename='aoanet'
+        )
+        self.set_embeddings(embeddings)
+
+    def set_embeddings(self, embeddings) -> None:
+        """
+        Set weights of embedding layer
+
+        Parameters
+        ----------
+        embeddings : torch.Tensor
+            Word embeddings
+
+        fine_tune : bool, optional, default=True
+            Allow fine-tuning of embedding layer? (only makes sense when using
+            pre-trained embeddings)
+        """
+
+        self.embed.weight = nn.Parameter(embeddings, requires_grad=True)
 
     def init_hidden(self, bsz):
         weight = next(self.parameters())
@@ -757,14 +780,6 @@ class Att2inModel(AttModel):
 
     def init_weights(self):
         initrange = 0.1
-        embeddings, embed_dim = load_embeddings(
-            '/mnt/dysk2/dane/glove/glove.6B.300d.txt',
-            word_map=self.vocab,
-            output_folder='.',
-            output_basename='aoanet'
-        )
-        # self.embed.weight.data.uniform_(-initrange, initrange)
-        self.embed.weight = nn.Parameter(embeddings, requires_grad=True)
         self.logit.bias.data.fill_(0)
         self.logit.weight.data.uniform_(-initrange, initrange)
 
