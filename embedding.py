@@ -4,6 +4,9 @@ from typing import Dict, Tuple
 import numpy as np
 import torch
 
+from eval_ensemble import vocab
+
+
 def init_embeddings(embeddings: torch.Tensor) -> None:
     """
     Fill embedding tensor with values from the uniform distribution.
@@ -50,7 +53,7 @@ def load_embeddings(
     print("Loading embeddings...")
     emb_basename = os.path.basename(emb_file)
     cache_path = os.path.join(output_folder, emb_basename + '.pth.tar')
-
+    print(word_map)
     # no cache, load embeddings from .txt file
     if not os.path.isfile(cache_path):
         # find embedding dimension
@@ -74,9 +77,6 @@ def load_embeddings(
             # ignore word if not in train_vocab
             if emb_word not in vocab:
                 continue
-            print(emb_word)
-            print(emb_word)
-            print(emb_word)
             embeddings[word_map[emb_word]] = torch.FloatTensor(embedding)
 
         # create cache file so we can load it quicker the next time
