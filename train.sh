@@ -1,5 +1,5 @@
 #!/bin/bash
-CUDA_VISIBLE_DEVICES=0
+CUDA_VISIBLE_DEVICES=1
 id="aoanet"
 if [ ! -f log/log_$id/infos_$id.pkl ]; then
 start_from=""
