@@ -23,6 +23,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.nn.utils.rnn import PackedSequence, pack_padded_sequence, pad_packed_sequence
 
+from embedding import load_embeddings
 from .CaptionModel import CaptionModel
 
 bad_endings = ['a', 'an', 'the', 'in', 'for', 'at', 'of', 'with', 'before', 'after', 'on', 'upon', 'near', 'to', 'is',
@@ -754,7 +755,14 @@ class Att2inModel(AttModel):
 
     def init_weights(self):
         initrange = 0.1
-        self.embed.weight.data.uniform_(-initrange, initrange)
+        embeddings, embed_dim = load_embeddings(
+            '/mnt/dysk2/dane/glove/glove.6B.300d.txt',
+            word_map=self.vocab,
+            output_folder='.',
+            output_basename='aoanet'
+        )
+        # self.embed.weight.data.uniform_(-initrange, initrange)
+        self.embedding.weight = nn.Parameter(embeddings, requires_grad=True)
         self.logit.bias.data.fill_(0)
         self.logit.weight.data.uniform_(-initrange, initrange)
 
