@@ -762,7 +762,7 @@ class Att2inModel(AttModel):
             output_basename='aoanet'
         )
         # self.embed.weight.data.uniform_(-initrange, initrange)
-        self.embedding.weight = nn.Parameter(embeddings, requires_grad=True)
+        self.embed.weight = nn.Parameter(embeddings, requires_grad=True)
         self.logit.bias.data.fill_(0)
         self.logit.weight.data.uniform_(-initrange, initrange)
 
