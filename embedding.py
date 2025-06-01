@@ -4,9 +4,6 @@ from typing import Dict, Tuple
 import numpy as np
 import torch
 
-from eval_ensemble import vocab
-
-
 def init_embeddings(embeddings: torch.Tensor) -> None:
     """
     Fill embedding tensor with values from the uniform distribution.
