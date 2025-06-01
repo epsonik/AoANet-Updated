@@ -4,7 +4,6 @@ start_from=""
 else
 start_from="--start_from log/log_$id"
 fi
-CUDA_VISIBLE_DEVICES=1
 python -u train.py --id $id \
     --caption_model aoa \
     --refine 1 \
@@ -45,7 +44,6 @@ python -u train.py --id $id \
     --scheduled_sampling_max_prob 0.5 \
     --learning_rate_decay_every 3
 
-CUDA_VISIBLE_DEVICES=1
 python -u train.py --id $id \
     --caption_model aoa \
     --refine 1 \
