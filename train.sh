@@ -4,6 +4,7 @@ start_from=""
 else
 start_from="--start_from log/log_$id"
 fi
+CUDA_VISIBLE_DEVICES=0
 python -u train.py --id $id \
     --caption_model aoa \
     --refine 1 \
