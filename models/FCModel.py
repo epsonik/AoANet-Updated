@@ -63,7 +63,6 @@ class FCModel(CaptionModel):
 
     def init_weights(self):
         initrange = 0.1
-        print("Test fc embed")
         self.embed.weight.data.uniform_(-initrange, initrange)
         self.logit.bias.data.fill_(0)
         self.logit.weight.data.uniform_(-initrange, initrange)

@@ -74,7 +74,6 @@ class AttModel(CaptionModel):
         self.embed = nn.Sequential(nn.Embedding(self.vocab_size + 1, self.input_encoding_size),
                                    nn.ReLU(),
                                    nn.Dropout(self.drop_prob_lm))
-        print("testattttt")
         self.fc_embed = nn.Sequential(nn.Linear(self.fc_feat_size, self.rnn_size),
                                       nn.ReLU(),
                                       nn.Dropout(self.drop_prob_lm))
@@ -98,29 +97,6 @@ class AttModel(CaptionModel):
         # For remove bad endding
         self.vocab = opt.vocab
         self.bad_endings_ix = [int(k) for k, v in self.vocab.items() if v in bad_endings]
-        embeddings, embed_dim = load_embeddings(
-            '/mnt/dysk2/dane/glove/glove.6B.300d.txt',
-            word_map=self.vocab,
-            output_folder='.',
-            output_basename='aoanet'
-        )
-        self.set_embeddings(embeddings)
-
-    def set_embeddings(self, embeddings) -> None:
-        """
-        Set weights of embedding layer
-
-        Parameters
-        ----------
-        embeddings : torch.Tensor
-            Word embeddings
-
-        fine_tune : bool, optional, default=True
-            Allow fine-tuning of embedding layer? (only makes sense when using
-            pre-trained embeddings)
-        """
-
-        self.embed.weight = nn.Parameter(embeddings, requires_grad=False)
 
     def init_hidden(self, bsz):
         weight = next(self.parameters())
