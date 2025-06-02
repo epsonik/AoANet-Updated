@@ -52,6 +52,7 @@ def load_embeddings(
     cache_path = os.path.join(output_folder, emb_basename + '.pth.tar')
     # no cache, load embeddings from .txt file
     inverted = {v: k for k, v in word_map.items()}
+    print(inverted)
     if not os.path.isfile(cache_path):
         # find embedding dimension
         with open(emb_file, 'r') as f:
