@@ -7,7 +7,7 @@ python -u eval_params.py --model log/old/$b/log_aoanet_rl/model-best.pth \
     --dump_images 0 \
     --dump_json 1 \
     --num_images -1 \
-    --name rlregnet$bSSHHHHHHHHHHHHH$k \
+    --name $b \
     --language_eval 1 \
     --beam_size 2 \
     --batch_size 40 \

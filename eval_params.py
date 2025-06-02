@@ -23,6 +23,7 @@ def count_parameters(model, model_name):
         table.add_row([name, params])
         total_params += params
     print(table)
+    print(model_name)
     print(f"Total Trainable Params: {total_params}")
     return total_params
 
@@ -65,4 +66,4 @@ model.load_state_dict(torch.load(opt.model))
 model.cuda()
 model.eval()
 
-count_parameters(model, opt['model'])
+count_parameters(model, opt.name)
