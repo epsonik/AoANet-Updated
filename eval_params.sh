@@ -1,7 +1,6 @@
 #!/bin/bash
 CUDA_VISIBLE_DEVICES=0
-b=regnet;
-for k in 2;
+for b in regnet densenet121 densenet161 densenet201 inception resnet151 resnet101 bottom up;
 do
 python -u eval_params.py --model log/old/$b/log_aoanet_rl/model-best.pth \
     --infos_path log/old/$b/log_aoanet_rl/infos_aoanet.pkl \
@@ -10,7 +9,7 @@ python -u eval_params.py --model log/old/$b/log_aoanet_rl/model-best.pth \
     --num_images -1 \
     --name rlregnet$bSSHHHHHHHHHHHHH$k \
     --language_eval 1 \
-    --beam_size $k \
+    --beam_size 2 \
     --batch_size 40 \
     --split test \
     --cnn_model regnet16 ;

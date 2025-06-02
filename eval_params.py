@@ -13,7 +13,7 @@ import torch
 from prettytable import PrettyTable
 
 
-def count_parameters(model):
+def count_parameters(model, model_name):
     table = PrettyTable(["Modules", "Parameters"])
     total_params = 0
     for name, parameter in model.named_parameters():
@@ -65,4 +65,4 @@ model.load_state_dict(torch.load(opt.model))
 model.cuda()
 model.eval()
 
-count_parameters(model)
+count_parameters(model, opt['model'])
