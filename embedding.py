@@ -50,15 +50,15 @@ def load_embeddings(
     print("Loading embeddings...")
     emb_basename = os.path.basename(emb_file)
     cache_path = os.path.join(output_folder, emb_basename + '.pth.tar')
-    print(word_map)
     # no cache, load embeddings from .txt file
+    inverted = {v: k for k, v in word_map.items()}
     if not os.path.isfile(cache_path):
         # find embedding dimension
         with open(emb_file, 'r') as f:
             embed_dim = len(f.readline().split(' ')) - 1
             num_lines = len(f.readlines())
 
-        vocab = set(word_map.keys())
+        vocab = set(word_map.values())
 
         # create tensor to hold embeddings, initialize
         embeddings = torch.FloatTensor(len(vocab), embed_dim)
@@ -74,7 +74,8 @@ def load_embeddings(
             # ignore word if not in train_vocab
             if emb_word not in vocab:
                 continue
-            embeddings[word_map[emb_word]] = torch.FloatTensor(embedding)
+            print(emb_word)
+            embeddings[inverted[emb_word]] = torch.FloatTensor(embedding)
 
         # create cache file so we can load it quicker the next time
         print('Saving vectors to {}'.format(cache_path))
