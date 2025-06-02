@@ -23,6 +23,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.nn.utils.rnn import PackedSequence, pack_padded_sequence, pad_packed_sequence
 
+from embedding import load_embeddings
 from .CaptionModel import CaptionModel
 
 bad_endings = ['a', 'an', 'the', 'in', 'for', 'at', 'of', 'with', 'before', 'after', 'on', 'upon', 'near', 'to', 'is',
@@ -73,6 +74,7 @@ class AttModel(CaptionModel):
         self.embed = nn.Sequential(nn.Embedding(self.vocab_size + 1, self.input_encoding_size),
                                    nn.ReLU(),
                                    nn.Dropout(self.drop_prob_lm))
+        print("testattttt")
         self.fc_embed = nn.Sequential(nn.Linear(self.fc_feat_size, self.rnn_size),
                                       nn.ReLU(),
                                       nn.Dropout(self.drop_prob_lm))
@@ -96,6 +98,29 @@ class AttModel(CaptionModel):
         # For remove bad endding
         self.vocab = opt.vocab
         self.bad_endings_ix = [int(k) for k, v in self.vocab.items() if v in bad_endings]
+        embeddings, embed_dim = load_embeddings(
+            '/mnt/dysk2/dane/glove/glove.6B.300d.txt',
+            word_map=self.vocab,
+            output_folder='.',
+            output_basename='aoanet'
+        )
+        self.set_embeddings(embeddings)
+
+    def set_embeddings(self, embeddings) -> None:
+        """
+        Set weights of embedding layer
+
+        Parameters
+        ----------
+        embeddings : torch.Tensor
+            Word embeddings
+
+        fine_tune : bool, optional, default=True
+            Allow fine-tuning of embedding layer? (only makes sense when using
+            pre-trained embeddings)
+        """
+
+        self.embed.weight = nn.Parameter(embeddings, requires_grad=False)
 
     def init_hidden(self, bsz):
         weight = next(self.parameters())
@@ -159,6 +184,7 @@ class AttModel(CaptionModel):
 
     def get_logprobs_state(self, it, fc_feats, att_feats, p_att_feats, att_masks, state):
         # 'it' contains a word index
+        print("test")
         xt = self.embed(it)
 
         output, state = self.core(xt, fc_feats, att_feats, p_att_feats, state, att_masks)
@@ -754,7 +780,6 @@ class Att2inModel(AttModel):
 
     def init_weights(self):
         initrange = 0.1
-        self.embed.weight.data.uniform_(-initrange, initrange)
         self.logit.bias.data.fill_(0)
         self.logit.weight.data.uniform_(-initrange, initrange)
 

@@ -19,11 +19,11 @@ python -u train.py --id $id \
     --label_smoothing 0.2 \
     --input_json data/cocotalk.json \
     --input_label_h5 data/cocotalk_label.h5 \
-    --input_fc_dir  data/regnet16_fc \
-    --input_att_dir  data/regnet16_att  \
-    --input_box_dir  data/regnet16_box \
-    --fc_feat_size 3024 \
-    --att_feat_size 3024 \
+    --input_fc_dir  data/densenet161_fc \
+    --input_att_dir  data/densenet161_att \
+    --input_box_dir  data/cocobu_box \
+    --fc_feat_size 2208 \
+    --att_feat_size 2208 \
     --seq_per_img 5 \
     --batch_size 10 \
     --beam_size 1 \
@@ -36,6 +36,7 @@ python -u train.py --id $id \
     --checkpoint_path log/log_$id  \
     $start_from \
     --save_checkpoint_every 6000 \
+    --save_history_ckpt 1 \
     --language_eval 1 \
     --val_images_use -1 \
     --max_epochs 25 \
@@ -57,11 +58,11 @@ python -u train.py --id $id \
     --dropout_aoa 0.3 \
     --input_json data/cocotalk.json \
     --input_label_h5 data/cocotalk_label.h5 \
-    --input_fc_dir  data/regnet16_fc \
-    --input_att_dir  data/regnet16_att  \
-    --input_box_dir  data/regnet16_box \
-    --fc_feat_size 3024 \
-    --att_feat_size 3024 \
+    --input_fc_dir  data/densenet161_fc \
+    --input_att_dir  data/densenet161_att \
+    --input_box_dir  data/cocobu_box \
+    --fc_feat_size 2208 \
+    --att_feat_size 2208 \
     --seq_per_img 5 \
     --batch_size 10 \
     --beam_size 1 \
@@ -71,6 +72,7 @@ python -u train.py --id $id \
     --language_eval 1 \
     --val_images_use -1 \
     --save_checkpoint_every 3000 \
+    --save_history_ckpt 1 \
     --start_from log/log_$id \
     --checkpoint_path log/log_$id"_rl" \
     --learning_rate 2e-5 \
