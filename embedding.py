@@ -75,9 +75,7 @@ def load_embeddings(
             # ignore word if not in train_vocab
             if emb_word not in vocab:
                 continue
-            print(emb_word)
-            print(type(inverted[emb_word]))
-            embeddings[inverted[emb_word]] = torch.FloatTensor(embedding)
+            embeddings[int(inverted[emb_word])] = torch.FloatTensor(embedding)
 
         # create cache file so we can load it quicker the next time
         print('Saving vectors to {}'.format(cache_path))
