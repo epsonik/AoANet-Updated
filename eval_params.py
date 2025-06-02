@@ -9,7 +9,9 @@ from dataloaderraw import *
 import eval_utils
 import argparse
 import misc.utils as utils
+from torchinfo import summary
 import torch
+import torch.nn as nn
 from prettytable import PrettyTable
 
 
@@ -17,12 +19,13 @@ def count_parameters(model, model_name):
     table = PrettyTable(["Modules", "Parameters"])
     total_params = 0
     for name, parameter in model.named_parameters():
-        # if not parameter.requires_grad:
-        #     continue
+        if not parameter.requires_grad:
+            continue
         params = parameter.numel()
         table.add_row([name, params])
         total_params += params
-    print(table)
+
+    print(summary(model).trainable_params)
     print(model_name)
     print(f"Total Trainable Params: {total_params/1000000}")
     return total_params
