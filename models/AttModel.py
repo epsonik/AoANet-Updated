@@ -120,7 +120,7 @@ class AttModel(CaptionModel):
             pre-trained embeddings)
         """
 
-        self.embed.weight = nn.Parameter(embeddings, requires_grad=True)
+        self.embed.weight = nn.Parameter(embeddings, requires_grad=False)
 
     def init_hidden(self, bsz):
         weight = next(self.parameters())
