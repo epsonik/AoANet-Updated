@@ -18,7 +18,6 @@ from prettytable import PrettyTable
 def count_parameters(model, model_name):
     table = PrettyTable(["Modules", "Parameters"])
     total_params = 0
-    print(model)
     for name, parameter in model.named_parameters():
         if not parameter.requires_grad:
             continue
@@ -26,7 +25,7 @@ def count_parameters(model, model_name):
         table.add_row([name, params])
         total_params += params
 
-    print(model_name)
+    print(table)
     print(f"Total Trainable Params: {total_params/1000000}")
     return total_params
 
