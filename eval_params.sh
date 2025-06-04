@@ -13,4 +13,4 @@ python -u eval_params.py --model log/old/$b/log_aoanet/model-best.pth \
     --batch_size 40 \
     --split test \
     --cnn_model regnet16 ;
-
+done
