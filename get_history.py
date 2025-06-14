@@ -1,5 +1,3 @@
-
-
 import misc.utils as utils
 import os
 import csv
@@ -19,14 +17,13 @@ val_result_history = histories_rl.get('val_result_history', {})
 loss_history = histories_rl.get('loss_history', {})
 
 lines_dict = []
-header = ["iteration", "CIDEr", "BLEU_4"]
+header = ["iteration", "CIDEr", "BLEU-4"]
 filename = os.path.join("/mnt/dysk2/dane/AoANet-Updated/log/", config_item + "_metrics.csv")
 for iteration in val_result_history.keys():
     val_CIDEr = val_result_history[iteration]['lang_stats']['CIDEr']
     val_BLEU_4 = val_result_history[iteration]['lang_stats']['Bleu_4']
     lines_dict.append(
-        {"iteration": iteration, "bleu_4": val_BLEU_4,
-         "cider": val_CIDEr})
+        {"iteration": iteration, "CIDEr": val_CIDEr, "BLEU-4": val_BLEU_4})
 with open(filename, 'a') as f:
     writer = csv.DictWriter(f, fieldnames=header)
     writer.writeheader()
@@ -38,7 +35,7 @@ filename = os.path.join("/mnt/dysk2/dane/AoANet-Updated/log/", config_item + "_l
 for iteration in loss_history.keys():
     loss_history = loss_history[iteration]
     lines_dict.append(
-        {"iteration": iteration, "loss": loss_history})
+        {"iteration": iteration, "loss_history": loss_history})
 
 with open(filename, 'a') as f:
     writer = csv.DictWriter(f, fieldnames=header)
