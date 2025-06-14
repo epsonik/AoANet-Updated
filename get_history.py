@@ -27,10 +27,10 @@ for iteration in val_result_history.keys():
     lines_dict.append(
         {"iteration": iteration, "bleu_4": val_BLEU_4,
          "cider": val_CIDEr})
-    with open(filename, 'a') as f:
-        writer = csv.DictWriter(f, fieldnames=header)
-        writer.writeheader()
-        writer.writerows(lines_dict)
+with open(filename, 'a') as f:
+    writer = csv.DictWriter(f, fieldnames=header)
+    writer.writeheader()
+    writer.writerows(lines_dict)
 
 lines_dict = []
 header = ["iteration", "loss_history"]
