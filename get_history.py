@@ -5,7 +5,7 @@ import os
 
 g_path = "/mnt/dysk2/dane/AoANet-Updated/log/old/"
 
-config_list = ["densenet121","densenet161","densenet201","bottom_up", "inception","regnet","resnet101", "resnet152"]
+config_list = ["regnet"]
 
 histories_rl = {}
 for config_item in config_list:
