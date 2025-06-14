@@ -30,12 +30,12 @@ with open(filename, 'a') as f:
     writer.writerows(lines_dict)
 
 lines_dict = []
-header = ["iteration", "loss_history"]
+header = ["iteration", "loss"]
 filename = os.path.join("/mnt/dysk2/dane/AoANet-Updated/log/", config_item + "_loss.csv")
 for iteration in loss_history.keys():
-    loss_history = loss_history[iteration]+""
+    loss = loss_history[iteration]+""
     lines_dict.append(
-        {"iteration": iteration, "loss_history": loss_history})
+        {"iteration": iteration, "loss": loss})
 
 with open(filename, 'a') as f:
     writer = csv.DictWriter(f, fieldnames=header)
