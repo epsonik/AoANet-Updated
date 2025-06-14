@@ -15,6 +15,7 @@ for config_item in config_list:
 
 val_result_history = histories.get('val_result_history', {})
 loss_history = histories.get('loss_history', {})
+print(histories.keys())
 # lr_history = histories.get('lr_history', {})
 # ss_prob_history = histories.get('ss_prob_history', {})
 print(val_result_history)
