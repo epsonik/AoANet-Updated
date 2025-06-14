@@ -34,7 +34,7 @@ for config_item in config_list:
     for iteration in loss_history.keys():
         loss = loss_history[iteration]
         lines_dict.append(
-            {"iteration": iteration, "loss": loss})
+            {"iteration": iteration, "loss": loss.item()})
 
     with open(filename, 'a') as f:
         writer = csv.DictWriter(f, fieldnames=header)
