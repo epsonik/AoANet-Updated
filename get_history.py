@@ -33,7 +33,7 @@ lines_dict = []
 header = ["iteration", "loss_history"]
 filename = os.path.join("/mnt/dysk2/dane/AoANet-Updated/log/", config_item + "_loss.csv")
 for iteration in loss_history.keys():
-    loss_history = loss_history[iteration]
+    loss_history = loss_history[iteration]+""
     lines_dict.append(
         {"iteration": iteration, "loss_history": loss_history})
 
