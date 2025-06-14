@@ -6,37 +6,37 @@ import os
 g_path = "/mnt/dysk2/dane/AoANet-Updated/log/old/"
 
 config_list = ["densenet121","densenet161","densenet201","bottom_up", "inception","regnet","resnet101", "resnet152"]
-histories = {}
+
 histories_rl = {}
 for config_item in config_list:
     with open(os.path.join(g_path, config_item, 'log_aoanet_rl', 'histories_aoanet.pkl'), 'rb') as f:
         histories_rl = utils.pickle_load(f)
 
-val_result_history = histories_rl.get('val_result_history', {})
-loss_history = histories_rl.get('loss_history', {})
+    val_result_history = histories_rl.get('val_result_history', {})
+    loss_history = histories_rl.get('loss_history', {})
 
-lines_dict = []
-header = ["iteration", "CIDEr", "BLEU-4"]
-filename = os.path.join("/mnt/dysk2/dane/AoANet-Updated/log/", config_item + "_metrics.csv")
-for iteration in val_result_history.keys():
-    val_CIDEr = val_result_history[iteration]['lang_stats']['CIDEr']
-    val_BLEU_4 = val_result_history[iteration]['lang_stats']['Bleu_4']
-    lines_dict.append(
-        {"iteration": iteration, "CIDEr": val_CIDEr, "BLEU-4": val_BLEU_4})
-with open(filename, 'a') as f:
-    writer = csv.DictWriter(f, fieldnames=header)
-    writer.writeheader()
-    writer.writerows(lines_dict)
+    lines_dict = []
+    header = ["iteration", "CIDEr", "BLEU-4"]
+    filename = os.path.join("/mnt/dysk2/dane/AoANet-Updated/log/", config_item + "_metrics.csv")
+    for iteration in val_result_history.keys():
+        val_CIDEr = val_result_history[iteration]['lang_stats']['CIDEr']
+        val_BLEU_4 = val_result_history[iteration]['lang_stats']['Bleu_4']
+        lines_dict.append(
+            {"iteration": iteration, "CIDEr": val_CIDEr, "BLEU-4": val_BLEU_4})
+    with open(filename, 'a') as f:
+        writer = csv.DictWriter(f, fieldnames=header)
+        writer.writeheader()
+        writer.writerows(lines_dict)
 
-lines_dict = []
-header = ["iteration", "loss"]
-filename = os.path.join("/mnt/dysk2/dane/AoANet-Updated/log/", config_item + "_loss.csv")
-for iteration in loss_history.keys():
-    loss = loss_history[iteration]
-    lines_dict.append(
-        {"iteration": iteration, "loss": loss})
+    lines_dict = []
+    header = ["iteration", "loss"]
+    filename = os.path.join("/mnt/dysk2/dane/AoANet-Updated/log/", config_item + "_loss.csv")
+    for iteration in loss_history.keys():
+        loss = loss_history[iteration]
+        lines_dict.append(
+            {"iteration": iteration, "loss": loss})
 
-with open(filename, 'a') as f:
-    writer = csv.DictWriter(f, fieldnames=header)
-    writer.writeheader()
-    writer.writerows(lines_dict)
+    with open(filename, 'a') as f:
+        writer = csv.DictWriter(f, fieldnames=header)
+        writer.writeheader()
+        writer.writerows(lines_dict)
