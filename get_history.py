@@ -21,7 +21,7 @@ for config_item in config_list:
     for iteration in val_result_history.keys():
         val_CIDEr = val_result_history[iteration]['lang_stats']['CIDEr']
         val_BLEU_4 = val_result_history[iteration]['lang_stats']['Bleu_4']
-        val_loss = val_result_history[iteration]['lang_stats']['loss']
+        val_loss = val_result_history[iteration]['loss']
         lines_dict.append(
             {"iteration": iteration, "CIDEr": val_CIDEr, "BLEU-4": val_BLEU_4, "loss": val_loss})
     with open(filename, 'a') as f:
