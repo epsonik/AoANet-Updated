@@ -23,7 +23,7 @@ header = ["iteration", "CIDEr", "BLEU_4"]
 filename = os.path.join("/mnt/dysk2/dane/AoANet-Updated/log/", config_item + "_metrics.csv")
 for iteration in val_result_history.keys():
     val_CIDEr = val_result_history[iteration]['lang_stats']['CIDEr']
-    val_BLEU_4 = val_result_history[iteration]['lang_stats']['BLEU_4']
+    val_BLEU_4 = val_result_history[iteration]['lang_stats']['Bleu_4']
     lines_dict.append(
         {"iteration": iteration, "bleu_4": val_BLEU_4,
          "cider": val_CIDEr})
