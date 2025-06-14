@@ -15,8 +15,8 @@ for config_item in config_list:
     with open(os.path.join(g_path, config_item, 'log_aoanet_rl', 'histories_aoanet.pkl'), 'rb') as f:
         histories_rl = utils.pickle_load(f)
 
-val_result_history = histories.get('val_result_history', {})
-loss_history = histories.get('loss_history', {})
+val_result_history = histories_rl.get('val_result_history', {})
+loss_history = histories_rl.get('loss_history', {})
 
 lines_dict = []
 header = ["iteration", "CIDEr", "BLEU_4"]
