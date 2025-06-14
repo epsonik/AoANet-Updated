@@ -16,13 +16,14 @@ for config_item in config_list:
     loss_history = histories_rl.get('loss_history', {})
 
     lines_dict = []
-    header = ["iteration", "CIDEr", "BLEU-4"]
+    header = ["iteration", "CIDEr", "BLEU-4", "loss"]
     filename = os.path.join("/mnt/dysk2/dane/AoANet-Updated/log/", config_item + "_metrics.csv")
     for iteration in val_result_history.keys():
         val_CIDEr = val_result_history[iteration]['lang_stats']['CIDEr']
         val_BLEU_4 = val_result_history[iteration]['lang_stats']['Bleu_4']
+        val_loss = val_result_history[iteration]['lang_stats']['loss']
         lines_dict.append(
-            {"iteration": iteration, "CIDEr": val_CIDEr, "BLEU-4": val_BLEU_4})
+            {"iteration": iteration, "CIDEr": val_CIDEr, "BLEU-4": val_BLEU_4, "loss": val_loss})
     with open(filename, 'a') as f:
         writer = csv.DictWriter(f, fieldnames=header)
         writer.writeheader()
@@ -34,7 +35,7 @@ for config_item in config_list:
     for iteration in loss_history.keys():
         loss = loss_history[iteration]
         if type(loss) != float:
-            loss=loss.item()
+            loss = loss.item()
         lines_dict.append(
             {"iteration": iteration, "loss": loss})
 
