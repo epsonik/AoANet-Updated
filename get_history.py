@@ -33,8 +33,10 @@ for config_item in config_list:
     filename = os.path.join("/mnt/dysk2/dane/AoANet-Updated/log/", config_item + "_loss.csv")
     for iteration in loss_history.keys():
         loss = loss_history[iteration]
+        if type(loss) != float:
+            loss=loss.item()
         lines_dict.append(
-            {"iteration": iteration, "loss": loss.item()})
+            {"iteration": iteration, "loss": loss})
 
     with open(filename, 'a') as f:
         writer = csv.DictWriter(f, fieldnames=header)
