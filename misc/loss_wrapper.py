@@ -16,9 +16,11 @@ class LossWrapper(torch.nn.Module):
 
     def forward(self, fc_feats, att_feats, labels, masks, att_masks, gts, gt_indices, sc_flag):
         out = {}
+        # zamrozone wagi
         if not sc_flag:
             loss = self.crit(self.model(fc_feats, att_feats, labels, att_masks), labels[:, 1:], masks[:, 1:])
         else:
+            # trenowanie wag cnn
             self.model.eval()
             with torch.no_grad():
                 greedy_res, _ = self.model(fc_feats, att_feats, att_masks, mode='sample')
