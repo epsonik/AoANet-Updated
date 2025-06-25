@@ -3,7 +3,7 @@ CUDA_VISIBLE_DEVICES=0
 for k in 2 3 5 8 1;
 do
 python -u eval.py --model log/old/densenet121/log_aoanet_rl/model-best.pth \
-    --infos_path log/old/densenet121/log_aoanet_rl/infos_aoanet-best \
+    --infos_path log/old/densenet121/log_aoanet_rl/infos_aoanet-best.pkl \
     --dump_images 0 \
     --dump_json 1 \
     --num_images -1 \
