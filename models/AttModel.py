@@ -713,16 +713,12 @@ class Att2in2Model(AttModel):
     def __init__(self, opt):
         super(Att2in2Model, self).__init__(opt)
         self.core = Att2in2Core(opt)
-        delattr(self, 'fc_embed')
-        self.fc_embed = lambda x: x
 
 
 class Att2all2Model(AttModel):
     def __init__(self, opt):
         super(Att2all2Model, self).__init__(opt)
         self.core = Att2all2Core(opt)
-        delattr(self, 'fc_embed')
-        self.fc_embed = lambda x: x
 
 
 class TopDownModel(AttModel):
