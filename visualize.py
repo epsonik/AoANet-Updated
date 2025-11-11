@@ -194,9 +194,9 @@ if __name__ == '__main__':
                         help='number of images to process (-1 for all)')
     
     # Generation parameters
-    parser.add_argument('--sample_method', type=str, default='greedy',
+    parser.add_argument('--sample_method', type=str, default='beam',
                         help='sampling method (greedy, beam, etc.)')
-    parser.add_argument('--beam_size', type=int, default=1,
+    parser.add_argument('--beam_size', type=int, default=3,
                         help='beam size for beam search (1 = greedy)')
     parser.add_argument('--temperature', type=float, default=1.0,
                         help='temperature for sampling')
