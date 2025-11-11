@@ -31,9 +31,30 @@ class DataLoaderRaw():
 
         print("start")
         sys.path.append("./misc")
-        from densenet161 import DenseNet161
-        from densenet_utils import myDensenet
-        net = DenseNet161()
+
+        # Dynamically import and initialize the specified CNN model
+        cnn_model = opt.get('cnn_model', 'densenet161')
+        if cnn_model == 'densenet121':
+            from densenet121 import DenseNet121
+            from densenet_utils import myDensenet
+            net = DenseNet121()
+            self.feature_size = 1024
+        elif cnn_model == 'densenet161':
+            from densenet161 import DenseNet161
+            from densenet_utils import myDensenet
+            net = DenseNet161()
+            self.feature_size = 2208
+        elif cnn_model == 'densenet169':
+            from densenet169 import DenseNet169
+            from densenet_utils import myDensenet
+            net = DenseNet169()
+            self.feature_size = 1664
+        else:  # Default or other models
+            from densenet161 import DenseNet161
+            from densenet_utils import myDensenet
+            net = DenseNet161()
+            self.feature_size = 2208
+
         self.my_densenet = myDensenet(net)
         self.my_densenet.cuda()
         self.my_densenet.eval()
@@ -83,8 +104,8 @@ class DataLoaderRaw():
         batch_size = batch_size or self.batch_size
 
         # pick an index of the datapoint to load next
-        fc_batch = np.ndarray((batch_size, 2048), dtype='float32')
-        att_batch = np.ndarray((batch_size, 14, 14, 2048), dtype='float32')
+        fc_batch = np.ndarray((batch_size, self.feature_size), dtype='float32')
+        att_batch = np.ndarray((batch_size, 14, 14, self.feature_size), dtype='float32')
         max_index = self.N
         wrapped = False
         infos = []
@@ -120,7 +141,7 @@ class DataLoaderRaw():
 
         data = {}
         data['fc_feats'] = fc_batch
-        data['att_feats'] = att_batch.reshape(batch_size, -1, 2048)
+        data['att_feats'] = att_batch.reshape(batch_size, -1, self.feature_size)
         data['att_masks'] = None
         data['bounds'] = {'it_pos_now': self.iterator, 'it_max': self.N, 'wrapped': wrapped}
         data['infos'] = infos

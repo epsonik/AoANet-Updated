@@ -178,10 +178,9 @@ def main(opt):
     print(f"\nProcessing complete! Processed {num_processed} image(s)")
     print(f"Visualizations saved to: {opt.output_dir}")
 
-
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    
+
     # Model parameters
     parser.add_argument('--model', type=str, required=True,
                         help='path to model checkpoint (.pth file)')
@@ -190,7 +189,7 @@ if __name__ == '__main__':
     parser.add_argument('--cnn_model', type=str, default='densenet121',
                         help='CNN model for feature extraction (resnet101, resnet152, etc.)')
 
-    
+
     # Output parameters
     parser.add_argument('--output_dir', type=str, default='vis/attention',
                         help='directory to save attention visualizations')
@@ -198,6 +197,6 @@ if __name__ == '__main__':
     opts.add_eval_options(parser)
 
     opt = parser.parse_args()
-    
+
     # Run visualization
     main(opt)
