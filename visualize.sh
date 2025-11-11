@@ -3,5 +3,3 @@ python visualize.py \
     --infos_path '/home/bartosiewicz/mateusz/densenet121/log_aoanet/infos_aoanet.pkl' \
     --image_folder '/home/bartosiewicz/mateusz/AoANet-Updated/vis/imgs' \
     --output_dir 'vis/attention' \
-    --beam_size 3 \
-    --num_images 1
