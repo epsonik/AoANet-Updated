@@ -190,9 +190,6 @@ if __name__ == '__main__':
                         help='folder containing images to visualize')
     parser.add_argument('--coco_json', type=str, default='',
                         help='optional: coco json file for image info')
-    if '--num_images' not in parser._option_string_actions:
-        parser.add_argument('--num_images', type=int, default=1,
-                            help='number of images to process (-1 for all)')
 
     # Generation parameters
     parser.add_argument('--sample_method', type=str, default='beam',
