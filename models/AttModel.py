@@ -22,7 +22,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.nn.utils.rnn import PackedSequence, pack_padded_sequence, pad_packed_sequence
-
+from functools import reduce
 from .CaptionModel import CaptionModel
 
 bad_endings = ['a', 'an', 'the', 'in', 'for', 'at', 'of', 'with', 'before', 'after', 'on', 'upon', 'near', 'to', 'is',
@@ -76,12 +76,11 @@ class AttModel(CaptionModel):
         self.fc_embed = nn.Sequential(nn.Linear(self.fc_feat_size, self.rnn_size),
                                       nn.ReLU(),
                                       nn.Dropout(self.drop_prob_lm))
-        self.att_embed = nn.Sequential(*(
-                ((nn.BatchNorm1d(self.att_feat_size),) if self.use_bn else ()) +
-                (nn.Linear(self.att_feat_size, self.rnn_size),
-                 nn.ReLU(),
-                 nn.Dropout(self.drop_prob_lm)) +
-                ((nn.BatchNorm1d(self.rnn_size),) if self.use_bn == 2 else ())))
+        self.att_embed = nn.Sequential(
+            nn.Linear(self.att_feat_size, self.rnn_size),
+            nn.ReLU(),
+            nn.Dropout(self.drop_prob_lm)
+        )
 
         self.logit_layers = getattr(opt, 'logit_layers', 1)
         if self.logit_layers == 1:
