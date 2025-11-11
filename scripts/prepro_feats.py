@@ -47,9 +47,9 @@ import sys
 def main(params):
   print("start")
   sys.path.append("./misc")
-  from regnet import RegNet16
+  from densenet import DenseNet121
   from densenet_utils import myDensenet
-  net = RegNet16()
+  net = DenseNet121()
   my_densenet = myDensenet(net)
   my_densenet.cuda()
   my_densenet.eval()
