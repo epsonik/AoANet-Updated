@@ -93,13 +93,13 @@ if __name__ == "__main__":
   parser = argparse.ArgumentParser()
 
   # input json
-  parser.add_argument('--input_json', default='data/dataset_coco.json', help='input json file to process into hdf5')
-  parser.add_argument('--output_dir', default='data/regnet16', help='output h5 file')
+  parser.add_argument('--input_json', default='/home/bartosiewicz/mateusz/dane/coco2014/karpathy/cocotalk.json', help='input json file to process into hdf5')
+  parser.add_argument('--output_dir', default='data/densenet121', help='output h5 file')
 
   # options
-  parser.add_argument('--images_root', default='/mnt/dysk2/dane/coco2014', help='root location in which images are stor ed, to be prepended to file_path in input json')
+  parser.add_argument('--images_root', default='/home/bartosiewicz/mateusz/dane/coco2014', help='root location in which images are stor ed, to be prepended to file_path in input json')
   parser.add_argument('--att_size', default=14, type=int, help='14x14 or 7x7')
-  parser.add_argument('--model', default='regnet16', type=str, help='resnet101, resnet152 regnet16')
+  parser.add_argument('--model', default='densenet121', type=str, help='resnet101, resnet152 regnet16 densenet121 densenet161 densenet201')
   parser.add_argument('--model_root', default='./data/imagenet_weights', type=str, help='model root')
 
   args = parser.parse_args()

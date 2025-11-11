@@ -240,8 +240,8 @@ def main(params):
 
 if __name__ == "__main__":
     base_path = os.path.abspath(os.path.dirname(__file__))  # path to this project
-    dataset_caption_path = os.path.join('/home2/data/images/coco2014/karpathy/dataset_coco.json')
-    basic_path = "/home/mateusz/projects/AoANet/"
+    dataset_caption_path = os.path.join('/home/bartosiewicz/mateusz/dane/coco2014/karpathy/dataset_coco.json')
+    basic_path = "/home/bartosiewicz/mateusz/AoANet-Updated/"
     output_path = "data/cocotalk.json"
     output_h5 = "data/cocotalk"
     word_count_threshold = 4
