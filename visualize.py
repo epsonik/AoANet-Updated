@@ -191,8 +191,7 @@ if __name__ == '__main__':
     parser.add_argument('--coco_json', type=str, default='',
                         help='optional: coco json file for image info')
 
-    parser.add_argument('--temperature', type=float, default=1.0,
-                        help='temperature for sampling')
+
     
     # Output parameters
     parser.add_argument('--output_dir', type=str, default='vis/attention',
