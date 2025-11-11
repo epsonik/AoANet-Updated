@@ -4,6 +4,8 @@ from __future__ import print_function
 
 import json
 import os
+import sys
+
 import numpy as np
 import torch
 import skimage
@@ -25,7 +27,8 @@ class DataLoaderRaw():
         self.batch_size = opt.get('batch_size', 1)
         self.seq_per_img = 1
 
-        # Load densenet
+        print("start")
+        sys.path.append("./misc")
         from densenet161 import DenseNet161
         from densenet_utils import myDensenet
         net = DenseNet161()
