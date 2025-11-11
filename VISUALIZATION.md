@@ -146,6 +146,16 @@ The visualization automatically handles different attention sizes.
 - **Beam Search**: During beam search with beam_size > 1, attention capture may not work perfectly due to the complex beam expansion process. In such cases, the script falls back to extracting attention by re-running the model with the generated sequence.
 - **Multi-stage Attention**: The visualization focuses on the decoder's attention to image features. Other attention mechanisms (e.g., self-attention in the refiner) are not currently visualized.
 
+## Demo
+
+Try the visualization feature without a trained model using synthetic attention patterns:
+
+```bash
+python demo_visualization.py
+```
+
+This creates example visualizations showing different attention patterns (top-left, center, right, bottom, distributed) for the words in a sample caption. The demo helps you understand what the visualizations look like before running on a real model.
+
 ## Testing
 
 Run the test suite to verify the visualization utilities:
