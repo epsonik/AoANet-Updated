@@ -93,7 +93,7 @@ if __name__ == "__main__":
   parser = argparse.ArgumentParser()
 
   # input json
-  parser.add_argument('--input_json', default='/home/bartosiewicz/mateusz/dane/coco2014/karpathy/cocotalk.json', help='input json file to process into hdf5')
+  parser.add_argument('--input_json', default='/home/bartosiewicz/mateusz/dane/coco2014/karpathy/dataset_coco.json', help='input json file to process into hdf5')
   parser.add_argument('--output_dir', default='data/densenet121', help='output h5 file')
 
   # options
