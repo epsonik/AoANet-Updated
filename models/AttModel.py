@@ -644,8 +644,6 @@ class Att2in2Core(nn.Module):
 class Att2inCore(Att2in2Core):
     def __init__(self, opt):
         super(Att2inCore, self).__init__(opt)
-        del self.a2c
-        self.a2c = nn.Linear(self.att_feat_size, 2 * self.rnn_size)
 
 
 """
