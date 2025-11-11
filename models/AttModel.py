@@ -760,10 +760,6 @@ class NewFCModel(AttModel):
         self.fc_embed = nn.Linear(self.fc_feat_size, self.input_encoding_size)
         self.embed = nn.Embedding(self.vocab_size + 1, self.input_encoding_size)
         self._core = LSTMCore(opt)
-        delattr(self, 'att_embed')
-        self.att_embed = lambda x: x
-        delattr(self, 'ctx2att')
-        self.ctx2att = lambda x: x
 
     def core(self, xt, fc_feats, att_feats, p_att_feats, state, att_masks):
         # Step 0, feed the input image
@@ -803,10 +799,7 @@ class LMModel(AttModel):
         self.fc_embed = lambda x: x.new_zeros(x.shape[0], self.input_encoding_size)
         self.embed = nn.Embedding(self.vocab_size + 1, self.input_encoding_size)
         self._core = LSTMCore(opt)
-        delattr(self, 'att_embed')
-        self.att_embed = lambda x: x
-        delattr(self, 'ctx2att')
-        self.ctx2att = lambda x: x
+
 
     def core(self, xt, fc_feats, att_feats, p_att_feats, state, att_masks):
         if (state[0] == 0).all():
