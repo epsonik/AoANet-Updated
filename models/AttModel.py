@@ -749,11 +749,6 @@ class DenseAttModel(AttModel):
 class Att2inModel(AttModel):
     def __init__(self, opt):
         super(Att2inModel, self).__init__(opt)
-        del self.embed, self.fc_embed, self.att_embed
-        self.embed = nn.Embedding(self.vocab_size + 1, self.input_encoding_size)
-        self.fc_embed = self.att_embed = lambda x: x
-        del self.ctx2att
-        self.ctx2att = nn.Linear(self.att_feat_size, self.att_hid_size)
         self.core = Att2inCore(opt)
         self.init_weights()
 
