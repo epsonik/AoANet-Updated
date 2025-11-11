@@ -12,6 +12,7 @@ import os
 from PIL import Image
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
+import skimage.transform
 
 
 class AttentionHook:
@@ -129,7 +130,7 @@ def get_attention_weights_from_sequence(model, fc_feats, att_feats, att_masks, s
     return attention_weights
 
 
-def resize_attention_to_image(attention, image_shape, att_size):
+def resize_attention_to_image(attention, image_shape, att_size, smooth=True):
     """
     Resize attention weights to match the image dimensions.
     
@@ -137,6 +138,7 @@ def resize_attention_to_image(attention, image_shape, att_size):
         attention: Attention weights (att_size,) numpy array
         image_shape: Target image shape (height, width)
         att_size: Number of attention regions (e.g., 49 for 7x7 grid)
+        smooth: If True, use smooth upscaling with pyramid_expand
     
     Returns:
         attention_map: 2D attention map resized to image_shape
@@ -154,17 +156,30 @@ def resize_attention_to_image(attention, image_shape, att_size):
     
     attention_grid = attention.reshape(grid_size, grid_size)
     
-    # Resize to image dimensions
-    attention_resized = cv2.resize(
-        attention_grid,
-        (image_shape[1], image_shape[0]),
-        interpolation=cv2.INTER_CUBIC
-    )
+    # Calculate upscale factor to match target image size
+    upscale = image_shape[0] // grid_size
+    
+    if smooth and upscale > 1:
+        # Use smooth upscaling like reference implementation
+        attention_resized = skimage.transform.pyramid_expand(
+            attention_grid, upscale=upscale, sigma=8
+        )
+        # Crop or pad to exact size if needed
+        if attention_resized.shape[0] != image_shape[0] or attention_resized.shape[1] != image_shape[1]:
+            attention_resized = skimage.transform.resize(
+                attention_resized, image_shape, mode='reflect', anti_aliasing=True
+            )
+    else:
+        # Use standard resizing
+        attention_resized = skimage.transform.resize(
+            attention_grid, image_shape, mode='reflect', anti_aliasing=True
+        )
     
     # Normalize to [0, 1]
-    attention_resized = (attention_resized - attention_resized.min()) / (
-        attention_resized.max() - attention_resized.min() + 1e-8
-    )
+    if attention_resized.max() > attention_resized.min():
+        attention_resized = (attention_resized - attention_resized.min()) / (
+            attention_resized.max() - attention_resized.min()
+        )
     
     return attention_resized
 
@@ -203,9 +218,10 @@ def create_attention_heatmap(image, attention_map, alpha=0.6, colormap=cv2.COLOR
 
 
 def visualize_attention_for_sequence(image_path, attention_weights, word_sequence, 
-                                     output_dir='vis/attention', att_size=49):
+                                     output_dir='vis/attention', att_size=49, smooth=True):
     """
     Create attention visualizations for each word in the generated sequence.
+    Similar to the reference implementation with overlay style.
     
     Args:
         image_path: Path to the original image
@@ -213,6 +229,7 @@ def visualize_attention_for_sequence(image_path, attention_weights, word_sequenc
         word_sequence: List of words in the generated caption
         output_dir: Directory to save visualizations
         att_size: Number of attention regions
+        smooth: If True, use smooth upscaling for attention maps
     
     Returns:
         visualization_paths: List of paths to saved visualization images
@@ -227,15 +244,17 @@ def visualize_attention_for_sequence(image_path, attention_weights, word_sequenc
     # Get base filename
     base_name = os.path.splitext(os.path.basename(image_path))[0]
     
+    # Save original image
+    image.save(os.path.join(output_dir, 'original.png'))
+    
     visualization_paths = []
     
-    # Create a figure with subplots for all words
     num_words = min(len(attention_weights), len(word_sequence))
     
     if num_words == 0:
         return []
     
-    # Create individual visualizations
+    # Create individual visualizations (overlay style like reference)
     for t, (attention, word) in enumerate(zip(attention_weights, word_sequence)):
         if isinstance(attention, torch.Tensor):
             attention = attention.numpy()
@@ -244,32 +263,26 @@ def visualize_attention_for_sequence(image_path, attention_weights, word_sequenc
         if attention.ndim > 1:
             attention = attention[0]
         
-        # Resize attention to image dimensions
+        # Resize attention to image dimensions with smooth upscaling
         attention_map = resize_attention_to_image(
-            attention, image_np.shape[:2], att_size
+            attention, image_np.shape[:2], att_size, smooth=smooth
         )
         
-        # Create heatmap
-        heatmap = create_attention_heatmap(image_np, attention_map)
+        # Create figure with just the overlay (like reference implementation)
+        fig, ax = plt.subplots()
+        ax.imshow(image_np)
         
-        # Create figure with original image and heatmap side by side
-        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
+        # Overlay attention with jet colormap and alpha=0.6 (like reference)
+        ax.imshow(attention_map, alpha=0.6, cmap='jet')
+        ax.axis('off')
         
-        # Original image
-        ax1.imshow(image_np)
-        ax1.set_title('Original Image')
-        ax1.axis('off')
+        # Sanitize word for filename
+        sanitized_word = "".join(c for c in word if c.isalnum() or c in (' ', '_')).rstrip()
+        output_path = os.path.join(output_dir, f'{t}_{sanitized_word}.png')
         
-        # Heatmap
-        ax2.imshow(heatmap)
-        ax2.set_title(f'Attention for: "{word}"')
-        ax2.axis('off')
-        
-        # Save figure
-        output_path = os.path.join(output_dir, f'{base_name}_word_{t:02d}_{word}.png')
-        plt.tight_layout()
-        plt.savefig(output_path, dpi=100, bbox_inches='tight')
-        plt.close()
+        # Save with tight bbox and no padding (like reference)
+        fig.savefig(output_path, bbox_inches='tight', pad_inches=0)
+        plt.close(fig)
         
         visualization_paths.append(output_path)
     
@@ -277,16 +290,17 @@ def visualize_attention_for_sequence(image_path, attention_weights, word_sequenc
     create_summary_visualization(
         image_np, attention_weights, word_sequence, 
         os.path.join(output_dir, f'{base_name}_summary.png'),
-        att_size
+        att_size, smooth=smooth
     )
     
     return visualization_paths
 
 
 def create_summary_visualization(image, attention_weights, word_sequence, 
-                                output_path, att_size=49):
+                                output_path, att_size=49, smooth=True):
     """
     Create a single figure showing attention for all words in a grid.
+    Similar to reference implementation with horizontal layout.
     
     Args:
         image: Original image as numpy array
@@ -294,31 +308,35 @@ def create_summary_visualization(image, attention_weights, word_sequence,
         word_sequence: List of words
         output_path: Path to save the summary visualization
         att_size: Number of attention regions
+        smooth: If True, use smooth upscaling for attention maps
     """
-    num_words = min(len(attention_weights), len(word_sequence), 12)  # Limit to 12 words
+    num_words = min(len(attention_weights), len(word_sequence), 50)  # Limit to 50 words
     
     if num_words == 0:
         return
     
-    # Calculate grid dimensions
-    cols = min(4, num_words)
-    rows = (num_words + cols - 1) // cols
+    # Create figure with horizontal layout (like reference)
+    subplot_size = 4
+    num_col = num_words
+    fig = plt.figure(dpi=100)
+    fig.set_size_inches(subplot_size * num_col, subplot_size * 4)
     
-    # Create figure
-    fig, axes = plt.subplots(rows, cols, figsize=(4 * cols, 4 * rows))
+    img_size = 4
+    fig_height = img_size
+    fig_width = num_col + img_size
     
-    if rows == 1 and cols == 1:
-        axes = np.array([[axes]])
-    elif rows == 1 or cols == 1:
-        axes = axes.reshape(rows, cols)
+    # Use GridSpec for flexible layout
+    grid = plt.GridSpec(fig_height, fig_width)
     
-    for idx in range(num_words):
-        row = idx // cols
-        col = idx % cols
-        ax = axes[row, col]
-        
-        attention = attention_weights[idx]
-        word = word_sequence[idx]
+    # Show original image on the left
+    ax_orig = plt.subplot(grid[0:img_size, 0:img_size])
+    ax_orig.imshow(image)
+    ax_orig.axis('off')
+    
+    # Show attention for each word
+    for t in range(num_words):
+        attention = attention_weights[t]
+        word = word_sequence[t]
         
         if isinstance(attention, torch.Tensor):
             attention = attention.numpy()
@@ -326,22 +344,18 @@ def create_summary_visualization(image, attention_weights, word_sequence,
         if attention.ndim > 1:
             attention = attention[0]
         
-        # Resize and create heatmap
-        attention_map = resize_attention_to_image(attention, image.shape[:2], att_size)
-        heatmap = create_attention_heatmap(image, attention_map)
+        # Resize attention with smooth upscaling
+        attention_map = resize_attention_to_image(
+            attention, image.shape[:2], att_size, smooth=smooth
+        )
         
-        ax.imshow(heatmap)
-        ax.set_title(f'"{word}"', fontsize=10)
+        # Create subplot for this word
+        ax = plt.subplot(grid[fig_height - 1, img_size + t])
+        ax.imshow(image)
+        ax.imshow(attention_map, alpha=0.6, cmap='jet')
         ax.axis('off')
     
-    # Hide empty subplots
-    for idx in range(num_words, rows * cols):
-        row = idx // cols
-        col = idx % cols
-        axes[row, col].axis('off')
-    
-    plt.tight_layout()
-    plt.savefig(output_path, dpi=150, bbox_inches='tight')
-    plt.close()
+    fig.savefig(output_path, bbox_inches='tight')
+    plt.close(fig)
     
     print(f'Summary visualization saved to: {output_path}')

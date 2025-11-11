@@ -70,14 +70,18 @@ python visualize.py \
 
 For each processed image, the script generates:
 
-1. **Individual Word Visualizations**: One image per word showing:
-   - Original image (left)
-   - Attention heatmap overlay (right)
-   - Word label as title
+1. **Original Image**: The input image saved for reference
+   
+   Format: `original.png`
 
-   Format: `{image_name}_word_{index}_{word}.png`
+2. **Individual Word Visualizations**: One image per word showing attention overlay on the image
+   - Attention heatmap overlaid directly on the image
+   - Uses jet colormap with alpha blending
+   - No titles or borders
 
-2. **Summary Visualization**: A grid showing attention for all words
+   Format: `{index}_{word}.png` (e.g., `0_a.png`, `1_cat.png`, `2_sitting.png`)
+
+3. **Summary Visualization**: A horizontal grid showing the original image and attention for all words
 
    Format: `{image_name}_summary.png`
 
@@ -109,9 +113,9 @@ For a caption "A cat sitting on a couch":
    - `AttentionHook`: Captures attention during forward pass
    - `capture_attention_weights()`: Generates caption and captures attention
    - `get_attention_weights_from_sequence()`: Extracts attention for pre-generated captions
-   - `resize_attention_to_image()`: Resizes attention map to image dimensions
-   - `create_attention_heatmap()`: Creates heatmap overlay
-   - `visualize_attention_for_sequence()`: Main visualization function
+   - `resize_attention_to_image()`: Resizes attention map using smooth pyramid upscaling
+   - `create_attention_heatmap()`: Creates heatmap overlay with jet colormap
+   - `visualize_attention_for_sequence()`: Main visualization function (overlay style)
 
 2. **visualize.py**: Main visualization script
    - Loads model and processes images
@@ -178,10 +182,11 @@ The visualization feature requires:
 - OpenCV (opencv-python)
 - Matplotlib
 - Pillow (PIL)
+- scikit-image (for smooth upscaling)
 
 Install with:
 ```bash
-pip install torch numpy opencv-python matplotlib pillow
+pip install torch numpy opencv-python matplotlib pillow scikit-image
 ```
 
 ## Troubleshooting
