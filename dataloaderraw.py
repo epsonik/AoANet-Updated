@@ -1,3 +1,5 @@
+# python
+# File: `dataloaderraw.py`
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
@@ -81,9 +83,9 @@ class DataLoaderRaw():
     def get_batch(self, split, batch_size=None):
         batch_size = batch_size or self.batch_size
 
-        # pick an index of the datapoint to load next
-        fc_batch = np.ndarray((batch_size, 2048), dtype = 'float32')
-        att_batch = np.ndarray((batch_size, 14, 14, 2048), dtype = 'float32')
+        # Do not pre-allocate fixed-size arrays; allocate on first seen feature
+        fc_batch = None              # shape: (batch_size, feat_dim)
+        att_batch = None             # shape: (batch_size, H, W, feat_dim)
         max_index = self.N
         wrapped = False
         infos = []
@@ -94,7 +96,6 @@ class DataLoaderRaw():
             if ri_next >= max_index:
                 ri_next = 0
                 wrapped = True
-                # wrap back around
             self.iterator = ri_next
 
             img = skimage.io.imread(self.files[ri])
@@ -109,17 +110,79 @@ class DataLoaderRaw():
             with torch.no_grad():
                 tmp_fc, tmp_att = self.my_densenet(img)
 
-            fc_batch[i] = tmp_fc.data.cpu().float().numpy()
-            att_batch[i] = tmp_att.data.cpu().float().numpy()
+            # FC feature -> 1D numpy
+            fc_np = tmp_fc.data.cpu().float().numpy().reshape(-1)
+            feat_dim = fc_np.size
+
+            # allocate or resize fc_batch as needed
+            if fc_batch is None:
+                fc_batch = np.zeros((batch_size, feat_dim), dtype=np.float32)
+            if feat_dim != fc_batch.shape[1]:
+                new_fc = np.zeros((batch_size, feat_dim), dtype=np.float32)
+                if i > 0:
+                    copy_cols = min(fc_batch.shape[1], feat_dim)
+                    new_fc[:i, :copy_cols] = fc_batch[:i, :copy_cols]
+                fc_batch = new_fc
+            fc_batch[i] = fc_np
+
+            # Attention feature -> normalize to (H, W, C) where C == feat_dim
+            att_np = tmp_att.data.cpu().float().numpy()
+            # remove leading batch dim if present
+            if att_np.ndim == 4 and att_np.shape[0] == 1:
+                att_np = att_np[0]
+            # if (C, H, W) -> transpose to (H, W, C)
+            if att_np.ndim == 3:
+                if att_np.shape[0] == feat_dim:
+                    att_np = att_np.transpose(1, 2, 0)
+                elif att_np.shape[2] == feat_dim:
+                    pass  # already (H, W, C)
+                else:
+                    # attempt a best-effort: if first dim small (e.g. 14) treat as H
+                    if att_np.shape[0] in (7, 14, 28):
+                        if att_np.shape[2] == feat_dim:
+                            pass
+                        elif att_np.shape[1] == feat_dim:
+                            att_np = att_np.transpose(0, 2, 1)
+                        else:
+                            att_np = att_np.transpose(1, 2, 0)
+                    else:
+                        att_np = att_np.transpose(1, 2, 0)
+            else:
+                # unexpected shape; try to flatten to a single spatial map with channels = feat_dim
+                att_np = np.reshape(att_np, (1, 1, -1))
+
+            h, w, c = att_np.shape
+
+            # allocate or resize att_batch as needed
+            if att_batch is None:
+                att_batch = np.zeros((batch_size, h, w, c), dtype=np.float32)
+            if (h, w, c) != tuple(att_batch.shape[1:]):
+                new_att = np.zeros((batch_size, h, w, c), dtype=np.float32)
+                if i > 0:
+                    min_h = min(att_batch.shape[1], h)
+                    min_w = min(att_batch.shape[2], w)
+                    min_c = min(att_batch.shape[3], c)
+                    new_att[:i, :min_h, :min_w, :min_c] = att_batch[:i, :min_h, :min_w, :min_c]
+                att_batch = new_att
+
+            att_batch[i] = att_np
 
             info_struct = {}
             info_struct['id'] = self.ids[ri]
             info_struct['file_path'] = self.files[ri]
             infos.append(info_struct)
 
+        # ensure defaults if no features were produced
+        if fc_batch is None:
+            fc_batch = np.zeros((batch_size, 2048), dtype=np.float32)
+        if att_batch is None:
+            att_batch = np.zeros((batch_size, 14, 14, 2048), dtype=np.float32)
+
         data = {}
         data['fc_feats'] = fc_batch
-        data['att_feats'] = att_batch.reshape(batch_size, -1, 2048)
+        # reshape att_feats to (batch_size, num_locations, feat_dim)
+        H, W, C = att_batch.shape[1], att_batch.shape[2], att_batch.shape[3]
+        data['att_feats'] = att_batch.reshape(batch_size, H * W, C)
         data['att_masks'] = None
         data['bounds'] = {'it_pos_now': self.iterator, 'it_max': self.N, 'wrapped': wrapped}
         data['infos'] = infos
@@ -134,4 +197,3 @@ class DataLoaderRaw():
 
     def get_vocab(self):
         return self.ix_to_word
-        
