@@ -77,13 +77,18 @@ def main(opt):
     while True:
         # Get batch
         data = loader.get_batch('test')
-        
-        # Extract features
-        tmp = [data['fc_feats'][0:1], data['att_feats'][0:1],
-               data['att_masks'][0:1] if data['att_masks'] is not None else None]
-        tmp = [_.cuda() if _ is not None else _ for _ in tmp]
-        fc_feats, att_feats, att_masks = tmp
-        
+
+        def to_cuda_tensor(x):
+            if x is None:
+                return None
+            if isinstance(x, torch.Tensor):
+                return x.cuda()
+            return torch.from_numpy(x).float().cuda()
+
+        fc_feats = to_cuda_tensor(data['fc_feats'][0:1])
+        att_feats = to_cuda_tensor(data['att_feats'][0:1])
+        att_masks = to_cuda_tensor(data.get('att_masks')[0:1]) if data.get('att_masks') is not None else None
+
         # Get image info
         image_id = data['infos'][0]['id']
         image_path = data['infos'][0]['file_path']
