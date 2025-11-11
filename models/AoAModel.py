@@ -189,6 +189,12 @@ class AoAModel(AttModel):
         self.num_layers = 2
         # mean pooling
         self.use_mean_feats = getattr(opt, 'mean_feats', 1)
+        
+        # Overwrite att_embed with correct dimensions
+        self.att_embed = nn.Sequential(nn.Linear(self.att_feat_size, self.rnn_size),
+                                    nn.ReLU(),
+                                    nn.Dropout(self.drop_prob_lm))
+        
         if opt.use_multi_head == 2:
             del self.ctx2att
             self.ctx2att = nn.Linear(opt.rnn_size, 2 * opt.multi_head_scale * opt.rnn_size)
