@@ -569,6 +569,9 @@ class Attention(nn.Module):
 
         self.h2att = nn.Linear(self.rnn_size, self.att_hid_size)
         self.alpha_net = nn.Linear(self.att_hid_size, 1)
+        
+        # Store attention weights for visualization
+        self.attn = None
 
     def forward(self, h, att_feats, p_att_feats, att_masks=None):
         # The p_att_feats here is already projected
@@ -590,6 +593,9 @@ class Attention(nn.Module):
         att_feats_ = att_feats.view(-1, att_size, att_feats.size(-1))  # batch * att_size * att_feat_size
         att_res = torch.bmm(weight.unsqueeze(1), att_feats_).squeeze(1)  # batch * att_feat_size
 
+        # Store attention weights for visualization
+        self.attn = weight
+        
         return att_res
 
 
