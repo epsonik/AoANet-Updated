@@ -184,13 +184,6 @@ if __name__ == '__main__':
                         help='path to infos file (.pkl file)')
     parser.add_argument('--cnn_model', type=str, default='resnet101',
                         help='CNN model for feature extraction (resnet101, resnet152, etc.)')
-    
-    # Input image parameters
-    parser.add_argument('--image_folder', type=str, required=True,
-                        help='folder containing images to visualize')
-    parser.add_argument('--coco_json', type=str, default='',
-                        help='optional: coco json file for image info')
-
 
     
     # Output parameters
