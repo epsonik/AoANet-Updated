@@ -189,12 +189,9 @@ if __name__ == '__main__':
     # Output parameters
     parser.add_argument('--output_dir', type=str, default='vis/attention',
                         help='directory to save attention visualizations')
-    
-    # Parse arguments
-    opt = parser.parse_args()
-    
-    # Add any missing opts that models.setup expects
+
     opts.add_eval_options(parser)
+
     opt = parser.parse_args()
     
     # Run visualization
