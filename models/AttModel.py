@@ -22,7 +22,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.nn.utils.rnn import PackedSequence, pack_padded_sequence, pad_packed_sequence
-
+from functools import reduce
 from .CaptionModel import CaptionModel
 
 bad_endings = ['a', 'an', 'the', 'in', 'for', 'at', 'of', 'with', 'before', 'after', 'on', 'upon', 'near', 'to', 'is',
@@ -76,12 +76,11 @@ class AttModel(CaptionModel):
         self.fc_embed = nn.Sequential(nn.Linear(self.fc_feat_size, self.rnn_size),
                                       nn.ReLU(),
                                       nn.Dropout(self.drop_prob_lm))
-        self.att_embed = nn.Sequential(*(
-                ((nn.BatchNorm1d(self.att_feat_size),) if self.use_bn else ()) +
-                (nn.Linear(self.att_feat_size, self.rnn_size),
-                 nn.ReLU(),
-                 nn.Dropout(self.drop_prob_lm)) +
-                ((nn.BatchNorm1d(self.rnn_size),) if self.use_bn == 2 else ())))
+        self.att_embed = nn.Sequential(
+            nn.Linear(self.att_feat_size, self.rnn_size),
+            nn.ReLU(),
+            nn.Dropout(self.drop_prob_lm)
+        )
 
         self.logit_layers = getattr(opt, 'logit_layers', 1)
         if self.logit_layers == 1:
@@ -645,8 +644,6 @@ class Att2in2Core(nn.Module):
 class Att2inCore(Att2in2Core):
     def __init__(self, opt):
         super(Att2inCore, self).__init__(opt)
-        del self.a2c
-        self.a2c = nn.Linear(self.att_feat_size, 2 * self.rnn_size)
 
 
 """
@@ -714,16 +711,12 @@ class Att2in2Model(AttModel):
     def __init__(self, opt):
         super(Att2in2Model, self).__init__(opt)
         self.core = Att2in2Core(opt)
-        delattr(self, 'fc_embed')
-        self.fc_embed = lambda x: x
 
 
 class Att2all2Model(AttModel):
     def __init__(self, opt):
         super(Att2all2Model, self).__init__(opt)
         self.core = Att2all2Core(opt)
-        delattr(self, 'fc_embed')
-        self.fc_embed = lambda x: x
 
 
 class TopDownModel(AttModel):
@@ -750,11 +743,6 @@ class DenseAttModel(AttModel):
 class Att2inModel(AttModel):
     def __init__(self, opt):
         super(Att2inModel, self).__init__(opt)
-        del self.embed, self.fc_embed, self.att_embed
-        self.embed = nn.Embedding(self.vocab_size + 1, self.input_encoding_size)
-        self.fc_embed = self.att_embed = lambda x: x
-        del self.ctx2att
-        self.ctx2att = nn.Linear(self.att_feat_size, self.att_hid_size)
         self.core = Att2inCore(opt)
         self.init_weights()
 
@@ -770,10 +758,6 @@ class NewFCModel(AttModel):
         self.fc_embed = nn.Linear(self.fc_feat_size, self.input_encoding_size)
         self.embed = nn.Embedding(self.vocab_size + 1, self.input_encoding_size)
         self._core = LSTMCore(opt)
-        delattr(self, 'att_embed')
-        self.att_embed = lambda x: x
-        delattr(self, 'ctx2att')
-        self.ctx2att = lambda x: x
 
     def core(self, xt, fc_feats, att_feats, p_att_feats, state, att_masks):
         # Step 0, feed the input image
@@ -813,10 +797,7 @@ class LMModel(AttModel):
         self.fc_embed = lambda x: x.new_zeros(x.shape[0], self.input_encoding_size)
         self.embed = nn.Embedding(self.vocab_size + 1, self.input_encoding_size)
         self._core = LSTMCore(opt)
-        delattr(self, 'att_embed')
-        self.att_embed = lambda x: x
-        delattr(self, 'ctx2att')
-        self.ctx2att = lambda x: x
+
 
     def core(self, xt, fc_feats, att_feats, p_att_feats, state, att_masks):
         if (state[0] == 0).all():
