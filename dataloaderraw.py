@@ -56,9 +56,17 @@ class DataLoaderRaw():
             from regnet import RegNet16
             net = RegNet16()
             self.feature_size = 3024
-        elif cnn_model == 'regnet':
+        elif cnn_model == 'ineption':
             from inception import Inception
             net = Inception()
+            self.feature_size = 2048
+        elif cnn_model == 'resnet101':
+            from resnet import Resnet101
+            net = Resnet101()
+            self.feature_size = 2048
+        elif cnn_model == 'resnet152':
+            from resnet import Resnet152
+            net = Resnet152()
             self.feature_size = 2048
         else:  # Default to densenet161
             from densenet161 import DenseNet161
