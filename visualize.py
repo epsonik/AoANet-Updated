@@ -192,7 +192,7 @@ if __name__ == '__main__':
                         help='path to model checkpoint (.pth file)')
     parser.add_argument('--infos_path', type=str, required=True,
                         help='path to infos file (.pkl file)')
-    parser.add_argument('--cnn_model', type=str, default='densenet121',
+    parser.add_argument('--cnn_model', type=str, default='densenet201',
                         help='CNN model for feature extraction (resnet101, resnet152, etc.)')
 
 
