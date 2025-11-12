@@ -10,8 +10,6 @@ import numpy as np
 import torch
 import skimage
 import skimage.io
-from captioning.utils.resnet import ResNet
-
 from torchvision import transforms as trn
 
 preprocess = trn.Compose([
