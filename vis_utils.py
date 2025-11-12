@@ -1,361 +1,182 @@
 """
-Visualization utilities for attention weights in image captioning models.
+Utilities for visualizing attention weights in image captioning models.
 """
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import numpy as np
 import torch
-import cv2
+import numpy as np
 import os
-from PIL import Image
+from PIL import Image, ImageDraw, ImageFont
 import matplotlib.pyplot as plt
-import matplotlib.cm as cm
-import skimage.transform
+import cv2
 
+# ----------------- ATTENTION CAPTURING UTILS -----------------
 
-class AttentionHook:
-    """Hook to capture attention weights during forward pass."""
-    def __init__(self):
-        self.attention_weights = []
-        
-    def __call__(self, module, input, output):
-        """Capture attention weights from the module."""
-        if hasattr(module, 'attn') and module.attn is not None:
-            # Multi-headed attention
-            attn = module.attn.mean(dim=1)  # Average across heads
-            self.attention_weights.append(attn.detach().cpu())
-            
-    def reset(self):
-        """Clear stored attention weights."""
-        self.attention_weights = []
-
-
-def capture_attention_weights(model, fc_feats, att_feats, att_masks, opt={}):
+def capture_attention_weights(model, fc_feats, att_feats, att_masks, opt):
     """
-    Generate a caption and capture attention weights for each decoding step.
-    
-    Args:
-        model: The caption model
-        fc_feats: Image features (batch_size, fc_feat_size)
-        att_feats: Attention features (batch_size, att_size, att_feat_size)
-        att_masks: Attention masks (batch_size, att_size) or None
-        opt: Options for sampling (beam_size, etc.)
-    
-    Returns:
-        seq: Generated sequence (batch_size, seq_length)
-        attention_weights: List of attention weight tensors, one per timestep
+    Runs the model in evaluation mode to generate a caption and capture attention weights.
     """
     model.eval()
-    
-    # Register hooks to capture attention
-    attention_hook = AttentionHook()
-    hooks = []
-    
-    # Register hook on attention modules
-    if hasattr(model, 'core') and hasattr(model.core, 'attention'):
-        hook = model.core.attention.register_forward_hook(attention_hook)
-        hooks.append(hook)
-    
-    # If model has refiner with attention (AoA model)
-    if hasattr(model, 'refiner'):
-        for layer in model.refiner.layers if hasattr(model.refiner, 'layers') else []:
-            if hasattr(layer, 'self_attn'):
-                hook = layer.self_attn.register_forward_hook(attention_hook)
-                hooks.append(hook)
-    
-    try:
-        with torch.no_grad():
-            # Generate caption
-            seq, seqLogprobs = model(fc_feats, att_feats, att_masks, opt=opt, mode='sample')
-        
-        attention_weights = attention_hook.attention_weights
-    finally:
-        # Remove hooks
-        for hook in hooks:
-            hook.remove()
-    
-    return seq, attention_weights
+
+    # Store weights in a list
+    attention_weights = []
+
+    # Define a hook to capture the output of the AoA module
+    def hook(module, input, output):
+        # output[1] is the attention weights from AoA
+        # The output shape is (batch_size, num_heads, seq_len, seq_len)
+        # For image features, seq_len is the number of regions (e.g., 196)
+        # We take the mean over the heads to get (batch_size, seq_len, seq_len)
+        # For visualization, we are interested in the attention over the image regions,
+        # which corresponds to the last dimension of the attention map.
+        # We take the mean across the second-to-last dimension.
+        weights = output[1].data.cpu().numpy()
+        attention_weights.append(np.mean(weights, axis=(1, 2)))
+
+    # Register the hook on the AoA module of the attention mechanism
+    hook_handle = model.att.aoa_layer.register_forward_hook(hook)
+
+    # Generate sequence
+    seq, _ = model.sample(fc_feats, att_feats, att_masks, opt)
+
+    # Remove the hook
+    hook_handle.remove()
+
+    # The attention_weights list will contain arrays for each decoding step.
+    # We need to rearrange them to be per-sequence-step.
+    # If seq has shape (1, max_len), and we have max_len steps,
+    # attention_weights will have max_len arrays of shape (1, num_regions)
+    # We squeeze and stack them.
+    if attention_weights:
+        # Stack the weights from each step and transpose
+        # to get (seq_len, num_regions)
+        return seq, np.array(attention_weights).squeeze(axis=1)
+    else:
+        return seq, []
 
 
 def get_attention_weights_from_sequence(model, fc_feats, att_feats, att_masks, seq):
     """
-    Extract attention weights by re-running the model with a given sequence.
-    This is useful when you already have a generated caption and want to visualize attention.
-    
-    Args:
-        model: The caption model
-        fc_feats: Image features (batch_size, fc_feat_size)
-        att_feats: Attention features (batch_size, att_size, att_feat_size)
-        att_masks: Attention masks (batch_size, att_size) or None
-        seq: Pre-generated sequence (batch_size, seq_length)
-    
-    Returns:
-        attention_weights: List of attention weight tensors, one per timestep
+    Re-runs the model with a given sequence to extract attention weights.
+    This is useful when beam search is used for generation, as hooks might not capture
+    the attention for the final selected sequence.
     """
     model.eval()
+
     batch_size = fc_feats.size(0)
-    state = model.init_hidden(batch_size)
-    
-    # Prepare features
-    p_fc_feats, p_att_feats, pp_att_feats, p_att_masks = model._prepare_feature(
-        fc_feats, att_feats, att_masks)
-    
+    assert batch_size == 1, "Currently only supports batch size of 1"
+
+    # Prepare input for the model
+    wt = fc_feats.new_zeros(batch_size, seq.size(1), dtype=torch.long)
+    wt[:, 0] = model.bos_idx
+    wt[:, 1:] = seq[:, :-1]
+
     attention_weights = []
-    
-    with torch.no_grad():
-        for t in range(seq.size(1)):
-            if seq[0, t] == 0:  # Stop at end token
-                break
-                
-            it = seq[:, t].clone()
-            
-            # Store attention before forward pass
-            attention_module = None
-            if hasattr(model, 'core') and hasattr(model.core, 'attention'):
-                attention_module = model.core.attention
-            
-            # Forward pass
-            logprobs, state = model.get_logprobs_state(
-                it, p_fc_feats, p_att_feats, pp_att_feats, p_att_masks, state)
-            
-            # Extract attention weights
-            if attention_module is not None:
-                if hasattr(attention_module, 'attn') and attention_module.attn is not None:
-                    # Multi-headed attention (averaged across heads)
-                    attn = attention_module.attn.mean(dim=1)  # (batch, att_size)
-                    attention_weights.append(attn.cpu())
-            
-    return attention_weights
 
+    def hook(module, input, output):
+        weights = output[1].data.cpu().numpy()
+        attention_weights.append(np.mean(weights, axis=(1, 2)))
 
-def resize_attention_to_image(attention, image_shape, att_size, smooth=True):
-    """
-    Resize attention weights to match the image dimensions.
-    
-    Args:
-        attention: Attention weights (att_size,) numpy array
-        image_shape: Target image shape (height, width)
-        att_size: Number of attention regions (e.g., 49 for 7x7 grid)
-        smooth: If True, use smooth upscaling with pyramid_expand
-    
-    Returns:
-        attention_map: 2D attention map resized to image_shape
-    """
-    # Reshape attention to spatial grid (assuming square grid)
-    grid_size = int(np.sqrt(att_size))
-    if grid_size * grid_size != att_size:
-        # If not a perfect square, handle gracefully
-        # This might be the case for bottom-up features
-        # For now, we'll create a square representation
-        grid_size = int(np.ceil(np.sqrt(att_size)))
-        attention_padded = np.zeros(grid_size * grid_size)
-        attention_padded[:len(attention)] = attention
-        attention = attention_padded
-    
-    attention_grid = attention.reshape(grid_size, grid_size)
-    
-    # Calculate upscale factor to match target image size
-    upscale = image_shape[0] // grid_size
-    
-    if smooth and upscale > 1:
-        # Use smooth upscaling like reference implementation
-        attention_resized = skimage.transform.pyramid_expand(
-            attention_grid, upscale=upscale, sigma=8
-        )
-        # Crop or pad to exact size if needed
-        if attention_resized.shape[0] != image_shape[0] or attention_resized.shape[1] != image_shape[1]:
-            attention_resized = skimage.transform.resize(
-                attention_resized, image_shape, mode='reflect', anti_aliasing=True
-            )
+    hook_handle = model.att.aoa_layer.register_forward_hook(hook)
+
+    # Forward pass with the given sequence
+    _ = model(fc_feats, att_feats, wt, att_masks)
+
+    hook_handle.remove()
+
+    if attention_weights:
+        return np.array(attention_weights).squeeze(axis=1)
     else:
-        # Use standard resizing
-        attention_resized = skimage.transform.resize(
-            attention_grid, image_shape, mode='reflect', anti_aliasing=True
-        )
-    
-    # Normalize to [0, 1]
-    if attention_resized.max() > attention_resized.min():
-        attention_resized = (attention_resized - attention_resized.min()) / (
-            attention_resized.max() - attention_resized.min()
-        )
-    
-    return attention_resized
-
-
-def create_attention_heatmap(image, attention_map, alpha=0.6, colormap=cv2.COLORMAP_JET):
-    """
-    Create a heatmap visualization by overlaying attention on the image.
-    
-    Args:
-        image: Original image as numpy array (H, W, 3) in RGB format
-        attention_map: 2D attention map (H, W) normalized to [0, 1]
-        alpha: Blending factor for overlay (0 = only image, 1 = only heatmap)
-        colormap: OpenCV colormap for heatmap visualization
-    
-    Returns:
-        heatmap: Blended image with attention heatmap
-    """
-    # Convert image to uint8 if needed
-    if image.dtype != np.uint8:
-        if image.max() <= 1.0:
-            image = (image * 255).astype(np.uint8)
-        else:
-            image = image.astype(np.uint8)
-    
-    # Convert attention map to heatmap
-    attention_map_uint8 = (attention_map * 255).astype(np.uint8)
-    heatmap = cv2.applyColorMap(attention_map_uint8, colormap)
-    
-    # Convert heatmap from BGR to RGB (OpenCV uses BGR)
-    heatmap = cv2.cvtColor(heatmap, cv2.COLOR_BGR2RGB)
-    
-    # Blend image and heatmap
-    blended = cv2.addWeighted(image, 1 - alpha, heatmap, alpha, 0)
-    
-    return blended
-
-
-def visualize_attention_for_sequence(image_path, attention_weights, word_sequence, 
-                                     output_dir='vis/attention', att_size=49, smooth=True):
-    """
-    Create attention visualizations for each word in the generated sequence.
-    Similar to the reference implementation with overlay style.
-    
-    Args:
-        image_path: Path to the original image
-        attention_weights: List of attention weight arrays, one per word
-        word_sequence: List of words in the generated caption
-        output_dir: Directory to save visualizations
-        att_size: Number of attention regions
-        smooth: If True, use smooth upscaling for attention maps
-    
-    Returns:
-        visualization_paths: List of paths to saved visualization images
-    """
-    # Load image
-    image = Image.open(image_path).convert('RGB')
-    image_np = np.array(image)
-    
-    # Create output directory
-    os.makedirs(output_dir, exist_ok=True)
-    
-    # Get base filename
-    base_name = os.path.splitext(os.path.basename(image_path))[0]
-    
-    # Save original image
-    image.save(os.path.join(output_dir, 'original.png'))
-    
-    visualization_paths = []
-    
-    num_words = min(len(attention_weights), len(word_sequence))
-    
-    if num_words == 0:
         return []
-    
-    # Create individual visualizations (overlay style like reference)
-    for t, (attention, word) in enumerate(zip(attention_weights, word_sequence)):
-        if isinstance(attention, torch.Tensor):
-            attention = attention.numpy()
-        
-        # Take first batch element if batched
-        if attention.ndim > 1:
-            attention = attention[0]
-        
-        # Resize attention to image dimensions with smooth upscaling
-        attention_map = resize_attention_to_image(
-            attention, image_np.shape[:2], att_size, smooth=smooth
-        )
-        
-        # Create figure with just the overlay (like reference implementation)
-        fig, ax = plt.subplots()
-        ax.imshow(image_np)
-        
-        # Overlay attention with jet colormap and alpha=0.6 (like reference)
-        ax.imshow(attention_map, alpha=0.6, cmap='jet')
-        ax.axis('off')
-        
-        # Sanitize word for filename
-        sanitized_word = "".join(c for c in word if c.isalnum() or c in (' ', '_')).rstrip()
-        output_path = os.path.join(output_dir, f'{t}_{sanitized_word}.png')
-        
-        # Save with tight bbox and no padding (like reference)
-        fig.savefig(output_path, bbox_inches='tight', pad_inches=0)
-        plt.close(fig)
-        
-        visualization_paths.append(output_path)
-    
-    # Create a summary visualization with all words
-    create_summary_visualization(
-        image_np, attention_weights, word_sequence, 
-        os.path.join(output_dir, f'{base_name}_summary.png'),
-        att_size, smooth=smooth
-    )
-    
-    return visualization_paths
+
+# ----------------- VISUALIZATION UTILS -----------------
+
+def resize_attention_to_image(attention, img_size, grid_size):
+    """
+    Resizes the attention map to the original image size.
+    """
+    # Reshape attention to a square grid
+    attention_grid = attention.reshape(grid_size, grid_size)
+
+    # Resize to image size
+    attention_map = cv2.resize(attention_grid, (img_size[0], img_size[1]),
+                               interpolation=cv2.INTER_LINEAR)
+    return attention_map
+
+def create_heatmap(attention_map, image):
+    """
+    Creates a heatmap overlay on the image.
+    """
+    # Normalize attention map
+    heatmap = (attention_map - np.min(attention_map)) / (np.max(attention_map) - np.min(attention_map))
+    heatmap = (heatmap * 255).astype(np.uint8)
+
+    # Apply colormap
+    colored_heatmap = cv2.applyColorMap(heatmap, cv2.COLORMAP_JET)
+
+    # Overlay on image
+    overlay = cv2.addWeighted(image, 0.6, colored_heatmap, 0.4, 0)
+    return overlay
+
+def add_caption_to_image(image, caption, word, font_path=None, font_size=20):
+    """
+    Adds the caption and highlights the current word on the image.
+    """
+    draw = ImageDraw.Draw(image)
+
+    try:
+        font = ImageFont.truetype(font_path, font_size)
+    except (IOError, TypeError):
+        font = ImageFont.load_default()
+
+    # Create a list of (word, is_highlighted)
+    display_words = [(w, w == word) for w in caption.split()]
+
+    x, y = 10, 10
+    for w, is_highlighted in display_words:
+        text_size = draw.textsize(w, font=font)
+        if is_highlighted:
+            draw.rectangle([x, y, x + text_size[0], y + text_size[1]], fill="yellow")
+            draw.text((x, y), w, font=font, fill="black")
+        else:
+            draw.text((x, y), w, font=font, fill="white")
+        x += text_size[0] + 5
+
+    return image
 
 
-def create_summary_visualization(image, attention_weights, word_sequence, 
-                                output_path, att_size=49, smooth=True):
+def visualize_attention_for_sequence(image_path, attention_weights, words, output_dir, att_size):
     """
-    Create a single figure showing attention for all words in a grid.
-    Similar to reference implementation with horizontal layout.
-    
-    Args:
-        image: Original image as numpy array
-        attention_weights: List of attention weight arrays
-        word_sequence: List of words
-        output_path: Path to save the summary visualization
-        att_size: Number of attention regions
-        smooth: If True, use smooth upscaling for attention maps
+    Creates and saves a sequence of visualizations for each word in the caption.
     """
-    num_words = min(len(attention_weights), len(word_sequence), 50)  # Limit to 50 words
-    
-    if num_words == 0:
-        return
-    
-    # Create figure with horizontal layout (like reference)
-    subplot_size = 4
-    num_col = num_words
-    fig = plt.figure(dpi=100)
-    fig.set_size_inches(subplot_size * num_col, subplot_size * 4)
-    
-    img_size = 4
-    fig_height = img_size
-    fig_width = num_col + img_size
-    
-    # Use GridSpec for flexible layout
-    grid = plt.GridSpec(fig_height, fig_width)
-    
-    # Show original image on the left
-    ax_orig = plt.subplot(grid[0:img_size, 0:img_size])
-    ax_orig.imshow(image)
-    ax_orig.axis('off')
-    
-    # Show attention for each word
-    for t in range(num_words):
-        attention = attention_weights[t]
-        word = word_sequence[t]
-        
-        if isinstance(attention, torch.Tensor):
-            attention = attention.numpy()
-        
-        if attention.ndim > 1:
-            attention = attention[0]
-        
-        # Resize attention with smooth upscaling
-        attention_map = resize_attention_to_image(
-            attention, image.shape[:2], att_size, smooth=smooth
-        )
-        
-        # Create subplot for this word
-        ax = plt.subplot(grid[fig_height - 1, img_size + t])
-        ax.imshow(image)
-        ax.imshow(attention_map, alpha=0.6, cmap='jet')
-        ax.axis('off')
-    
-    fig.savefig(output_path, bbox_inches='tight')
-    plt.close(fig)
-    
-    print(f'Summary visualization saved to: {output_path}')
+    img = Image.open(image_path).convert("RGB")
+    img_cv = np.array(img)
+    img_cv = cv2.cvtColor(img_cv, cv2.COLOR_RGB2BGR)
+
+    grid_size = int(np.sqrt(att_size))
+
+    vis_paths = []
+
+    # Add a visualization for the <start> token (no highlight)
+    # You might want to visualize the initial attention state
+
+    for i, (word, attention) in enumerate(zip(words, attention_weights)):
+        # Resize attention and create heatmap
+        attention_map = resize_attention_to_image(attention, (img.width, img.height), grid_size)
+        heatmap_overlay = create_heatmap(attention_map, img_cv)
+
+        # Convert back to PIL Image
+        vis_image = Image.fromarray(cv2.cvtColor(heatmap_overlay, cv2.COLOR_BGR2RGB))
+
+        # Add caption with highlighted word
+        vis_image = add_caption_to_image(vis_image, " ".join(words), word)
+
+        # Save visualization
+        filename = f"{os.path.basename(image_path).split('.')[0]}_step_{i}_{word}.png"
+        save_path = os.path.join(output_dir, filename)
+        vis_image.save(save_path)
+        vis_paths.append(save_path)
+
+    return vis_paths
