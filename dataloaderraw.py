@@ -63,11 +63,11 @@ class DataLoaderRaw():
             self.feature_size = 2048
         elif cnn_model == 'resnet101':
             import resnet
-            net = resnet101()
+            net = resnet.resnet101()
             self.feature_size = 2048
         elif cnn_model == 'resnet152':
             import resnet
-            net = resnet152()
+            net = resnet.resnet152()
             self.feature_size = 2048
         else:  # Default to densenet161
             from densenet161 import DenseNet161
