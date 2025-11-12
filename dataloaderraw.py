@@ -34,26 +34,29 @@ class DataLoaderRaw():
 
         # Dynamically import and initialize the specified CNN model
         cnn_model = opt.get('cnn_model', 'densenet161')
+        from densenet_utils import myDensenet
+
         if cnn_model == 'densenet121':
             from densenet import DenseNet121
-            from densenet_utils import myDensenet
             net = DenseNet121()
             self.feature_size = 1024
         elif cnn_model == 'densenet161':
             from densenet161 import DenseNet161
-            from densenet_utils import myDensenet
             net = DenseNet161()
             self.feature_size = 2208
         elif cnn_model == 'densenet169':
             from densenet169 import DenseNet169
-            from densenet_utils import myDensenet
             net = DenseNet169()
             self.feature_size = 1664
-        else:  # Default or other models
+        elif cnn_model == 'densenet201':
+            from densenet201 import DenseNet201
+            net = DenseNet201()
+            self.feature_size = 1920
+        else:  # Default to densenet161
             from densenet161 import DenseNet161
-            from densenet_utils import myDensenet
             net = DenseNet161()
             self.feature_size = 2208
+            print(f"Warning: CNN model '{cnn_model}' not recognized. Defaulting to densenet161.")
 
         self.my_densenet = myDensenet(net)
         self.my_densenet.cuda()
