@@ -1,8 +1,9 @@
-
+# python
 """
 Script to visualize attention weights for image captioning.
-This script loads a trained model, generates captions for images,
-and creates attention heatmap visualizations.
+Creates a subdirectory per input image (basename) under `opt.output_dir`
+and copies the original image into that folder named `original<ext>`.
+Saves per-word attention visualizations into the same per-image folder.
 """
 from __future__ import absolute_import
 from __future__ import division
@@ -10,10 +11,9 @@ from __future__ import print_function
 
 import argparse
 import os
-import torch
-import numpy as np
-from PIL import Image
 import shutil
+import torch
+from PIL import Image
 
 import opts
 import models
@@ -22,17 +22,24 @@ import misc.utils as utils
 import vis_utils
 
 
+def to_cuda_tensor(x):
+    if x is None:
+        return None
+    if isinstance(x, torch.Tensor):
+        return x.cuda()
+    return torch.from_numpy(x).float().cuda()
+
+
 def main(opt):
-    # Load model and info
+    # Load model and infos
     print(f"Loading model from: {opt.model}")
     with open(opt.infos_path, 'rb') as f:
         infos = utils.pickle_load(f)
 
-    # Override and collect parameters
+    # Merge/override options
     replace = ['input_fc_dir', 'input_att_dir', 'input_box_dir', 'input_label_h5',
                'input_json', 'batch_size', 'id']
     ignore = ['start_from']
-
     for k in vars(infos['opt']).keys():
         if k in replace:
             setattr(opt, k, getattr(opt, k) or getattr(infos['opt'], k, ''))
@@ -40,14 +47,13 @@ def main(opt):
             if k not in vars(opt):
                 vars(opt).update({k: vars(infos['opt'])[k]})
 
-    vocab = infos['vocab']  # ix -> word mapping
+    vocab = infos['vocab']
 
-    # Setup the model
+    # Setup model
     opt.vocab = vocab
     model = models.setup(opt)
     del opt.vocab
 
-    # Manually set special indices on the model
     model.bos_idx = getattr(infos['opt'], 'bos_idx', 0)
     model.eos_idx = getattr(infos['opt'], 'eos_idx', 0)
     model.pad_idx = getattr(infos['opt'], 'pad_idx', 0)
@@ -59,7 +65,7 @@ def main(opt):
     print("Model loaded successfully")
     print(f"Vocabulary size: {len(vocab)}")
 
-    # Create data loader for the image
+    # Data loader
     if opt.image_folder:
         loader = DataLoaderRaw({
             'folder_path': opt.image_folder,
@@ -71,10 +77,8 @@ def main(opt):
     else:
         raise ValueError("Must specify --image_folder")
 
-    # Create output directory
     os.makedirs(opt.output_dir, exist_ok=True)
 
-    # Process images
     loader.reset_iterator('test')
     num_processed = 0
 
@@ -83,27 +87,18 @@ def main(opt):
     print(f"Number of images to process: {opt.num_images if opt.num_images > 0 else 'all'}\n")
 
     while True:
-        # Get batch
         data = loader.get_batch('test')
-
-        def to_cuda_tensor(x):
-            if x is None:
-                return None
-            if isinstance(x, torch.Tensor):
-                return x.cuda()
-            return torch.from_numpy(x).float().cuda()
 
         fc_feats = to_cuda_tensor(data['fc_feats'][0:1])
         att_feats = to_cuda_tensor(data['att_feats'][0:1])
         att_masks = to_cuda_tensor(data.get('att_masks')[0:1]) if data.get('att_masks') is not None else None
 
-        # Get image info
         image_id = data['infos'][0]['id']
         image_path = data['infos'][0]['file_path']
 
         print(f"Processing image {num_processed + 1}: {image_path}")
 
-        # Generate caption and capture attention
+        # Generate caption and try to capture attention
         with torch.no_grad():
             seq, attention_weights = vis_utils.capture_attention_weights(
                 model, fc_feats, att_feats, att_masks,
@@ -112,14 +107,10 @@ def main(opt):
                      'temperature': opt.temperature}
             )
 
-        # Decode sequence to words
         sents = utils.decode_sequence(vocab, seq)
         caption = sents[0]
-
         print(f"Generated caption: {caption}")
 
-        # If no attention was captured (e.g., for multi-headed attention during beam search),
-        # try extracting attention by re-running with the sequence
         if len(attention_weights) == 0:
             print("No attention captured during generation, extracting from sequence...")
             attention_weights = vis_utils.get_attention_weights_from_sequence(
@@ -127,50 +118,44 @@ def main(opt):
             )
 
         if len(attention_weights) > 0:
-            # Split caption into words
             words = caption.split()
-
-            # Adjust attention_weights list to match words (handle potential mismatches)
             min_len = min(len(attention_weights), len(words))
             attention_weights = attention_weights[:min_len]
             words = words[:min_len]
 
             print(f"Creating visualizations for {len(words)} words...")
 
-            # Get the actual image path
-            if opt.image_folder:
-                actual_image_path = image_path  # DataloaderRaw returns the full path
-            else:
-                actual_image_path = image_path
+            actual_image_path = image_path if opt.image_folder else image_path
 
-            # Check if image exists
+            # Ensure the image path exists; try fallback in image_folder
             if not os.path.exists(actual_image_path):
                 print(f"Warning: Image not found at {actual_image_path}")
-                # Try to find the image in the folder
                 possible_path = os.path.join(opt.image_folder, os.path.basename(image_path))
                 if os.path.exists(possible_path):
                     actual_image_path = possible_path
                     print(f"Found image at: {actual_image_path}")
                 else:
-                    print(f"Skipping visualization for this image")
+                    print("Skipping visualization for this image")
                     num_processed += 1
                     continue
 
-            # Create per-image output directory named after the original image (without extension)
+            # Per-image output directory named after the original image basename (no ext)
             image_basename = os.path.splitext(os.path.basename(actual_image_path))[0]
             per_image_dir = os.path.join(opt.output_dir, image_basename)
             os.makedirs(per_image_dir, exist_ok=True)
 
-            # Optional: copy original image into the per-image folder (uncomment if desired)
-            # try:
-            #     shutil.copy2(actual_image_path, per_image_dir)
-            # except Exception as e:
-            #     print(f"Warning: could not copy image to {per_image_dir}: {e}")
+            # Copy original image into per-image folder and name it "original<ext>"
+            try:
+                _, ext = os.path.splitext(actual_image_path)
+                dest_path = os.path.join(per_image_dir, f'original{ext}')
+                shutil.copy2(actual_image_path, dest_path)
+            except Exception as e:
+                print(f"Warning: could not copy original image to {per_image_dir}: {e}")
 
-            # Determine attention size from features
-            att_size = att_feats.size(1)
+            # Determine attention grid size (number of spatial locations)
+            # att_feats shape expected: (1, num_loc, feat_dim)
+            att_size = att_feats.size(1) if att_feats is not None else None
 
-            # Create visualizations and save them into the per-image directory
             vis_paths = vis_utils.visualize_attention_for_sequence(
                 actual_image_path,
                 attention_weights,
@@ -184,10 +169,8 @@ def main(opt):
             print("Warning: Could not extract attention weights for this image")
 
         num_processed += 1
+        print()
 
-        print()  # Empty line for readability
-
-        # Check if we should stop
         if opt.num_images > 0 and num_processed >= opt.num_images:
             break
 
@@ -197,10 +180,10 @@ def main(opt):
     print(f"\nProcessing complete! Processed {num_processed} image(s)")
     print(f"Visualizations saved to: {opt.output_dir}")
 
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
 
-    # Model parameters
     parser.add_argument('--model', type=str, required=True,
                         help='path to model checkpoint (.pth file)')
     parser.add_argument('--infos_path', type=str, required=True,
@@ -208,14 +191,10 @@ if __name__ == '__main__':
     parser.add_argument('--cnn_model', type=str, default='densenet201',
                         help='CNN model for feature extraction (resnet101, resnet152, etc.)')
 
-
-    # Output parameters
     parser.add_argument('--output_dir', type=str, default='vis/attention',
                         help='directory to save attention visualizations')
 
     opts.add_eval_options(parser)
 
     opt = parser.parse_args()
-
-    # Run visualization
     main(opt)
