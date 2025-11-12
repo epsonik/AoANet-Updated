@@ -75,7 +75,7 @@ class DataLoaderRaw():
             self.feature_size = 2208
             print(f"Warning: CNN model '{cnn_model}' not recognized. Defaulting to densenet161.")
 
-        self.my_densenet = myDensenet(net)
+        self.my_densenet = myResnet(net)
         self.my_densenet.cuda()
         self.my_densenet.eval()
 
