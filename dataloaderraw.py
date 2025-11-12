@@ -10,6 +10,7 @@ import numpy as np
 import torch
 import skimage
 import skimage.io
+from captioning.utils.resnet import ResNet
 
 from torchvision import transforms as trn
 
@@ -61,12 +62,12 @@ class DataLoaderRaw():
             net = Inception()
             self.feature_size = 2048
         elif cnn_model == 'resnet101':
-            from resnet import Resnet101
-            net = Resnet101()
+            from resnet import resnet101
+            net = resnet101()
             self.feature_size = 2048
         elif cnn_model == 'resnet152':
-            from resnet import Resnet152
-            net = Resnet152()
+            from resnet import resnet152
+            net = resnet152()
             self.feature_size = 2048
         else:  # Default to densenet161
             from densenet161 import DenseNet161
