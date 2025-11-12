@@ -1,3 +1,4 @@
+python
 """
 Script to visualize attention weights for image captioning.
 This script loads a trained model, generates captions for images,
@@ -12,6 +13,7 @@ import os
 import torch
 import numpy as np
 from PIL import Image
+import shutil
 
 import opts
 import models
@@ -25,21 +27,21 @@ def main(opt):
     print(f"Loading model from: {opt.model}")
     with open(opt.infos_path, 'rb') as f:
         infos = utils.pickle_load(f)
-    
+
     # Override and collect parameters
-    replace = ['input_fc_dir', 'input_att_dir', 'input_box_dir', 'input_label_h5', 
+    replace = ['input_fc_dir', 'input_att_dir', 'input_box_dir', 'input_label_h5',
                'input_json', 'batch_size', 'id']
     ignore = ['start_from']
-    
+
     for k in vars(infos['opt']).keys():
         if k in replace:
             setattr(opt, k, getattr(opt, k) or getattr(infos['opt'], k, ''))
         elif k not in ignore:
             if k not in vars(opt):
                 vars(opt).update({k: vars(infos['opt'])[k]})
-    
+
     vocab = infos['vocab']  # ix -> word mapping
-    
+
     # Setup the model
     opt.vocab = vocab
     model = models.setup(opt)
@@ -137,7 +139,7 @@ def main(opt):
 
             # Get the actual image path
             if opt.image_folder:
-                actual_image_path = image_path # DataloaderRaw returns the full path
+                actual_image_path = image_path  # DataloaderRaw returns the full path
             else:
                 actual_image_path = image_path
 
@@ -154,19 +156,30 @@ def main(opt):
                     num_processed += 1
                     continue
 
+            # Create per-image output directory named after the original image (without extension)
+            image_basename = os.path.splitext(os.path.basename(actual_image_path))[0]
+            per_image_dir = os.path.join(opt.output_dir, image_basename)
+            os.makedirs(per_image_dir, exist_ok=True)
+
+            # Optional: copy original image into the per-image folder (uncomment if desired)
+            # try:
+            #     shutil.copy2(actual_image_path, per_image_dir)
+            # except Exception as e:
+            #     print(f"Warning: could not copy image to {per_image_dir}: {e}")
+
             # Determine attention size from features
             att_size = att_feats.size(1)
 
-            # Create visualizations
+            # Create visualizations and save them into the per-image directory
             vis_paths = vis_utils.visualize_attention_for_sequence(
                 actual_image_path,
                 attention_weights,
                 words,
-                output_dir=opt.output_dir,
+                output_dir=per_image_dir,
                 att_size=att_size
             )
 
-            print(f"Created {len(vis_paths)} visualization(s)")
+            print(f"Created {len(vis_paths)} visualization(s) in {per_image_dir}")
         else:
             print("Warning: Could not extract attention weights for this image")
 
