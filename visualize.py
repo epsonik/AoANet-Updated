@@ -42,14 +42,15 @@ def main(opt):
     
     # Setup the model
     opt.vocab = vocab
-    # Add special word indices to opt
-    opt.bos_idx = getattr(infos['opt'], 'bos_idx', 0)
-    opt.eos_idx = getattr(infos['opt'], 'eos_idx', 0)
-    opt.pad_idx = getattr(infos['opt'], 'pad_idx', 0)
-
     model = models.setup(opt)
     del opt.vocab
-    model.load_state_dict(torch.load(opt.model))
+
+    # Manually set special indices on the model
+    model.bos_idx = getattr(infos['opt'], 'bos_idx', 0)
+    model.eos_idx = getattr(infos['opt'], 'eos_idx', 0)
+    model.pad_idx = getattr(infos['opt'], 'pad_idx', 0)
+
+    model.load_state_dict(torch.load(opt.model, map_location=torch.device('cpu')))
     model.cuda()
     model.eval()
 
@@ -136,7 +137,7 @@ def main(opt):
 
             # Get the actual image path
             if opt.image_folder:
-                actual_image_path = os.path.join(opt.image_folder, image_path)
+                actual_image_path = image_path # DataloaderRaw returns the full path
             else:
                 actual_image_path = image_path
 
