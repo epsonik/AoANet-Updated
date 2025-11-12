@@ -42,15 +42,20 @@ def main(opt):
     
     # Setup the model
     opt.vocab = vocab
+    # Add special word indices to opt
+    opt.bos_idx = getattr(infos['opt'], 'bos_idx', 0)
+    opt.eos_idx = getattr(infos['opt'], 'eos_idx', 0)
+    opt.pad_idx = getattr(infos['opt'], 'pad_idx', 0)
+
     model = models.setup(opt)
     del opt.vocab
     model.load_state_dict(torch.load(opt.model))
     model.cuda()
     model.eval()
-    
+
     print("Model loaded successfully")
     print(f"Vocabulary size: {len(vocab)}")
-    
+
     # Create data loader for the image
     if opt.image_folder:
         loader = DataLoaderRaw({
@@ -62,18 +67,18 @@ def main(opt):
         loader.ix_to_word = vocab
     else:
         raise ValueError("Must specify --image_folder")
-    
+
     # Create output directory
     os.makedirs(opt.output_dir, exist_ok=True)
-    
+
     # Process images
     loader.reset_iterator('test')
     num_processed = 0
-    
+
     print(f"\nProcessing images from: {opt.image_folder}")
     print(f"Saving visualizations to: {opt.output_dir}")
     print(f"Number of images to process: {opt.num_images if opt.num_images > 0 else 'all'}\n")
-    
+
     while True:
         # Get batch
         data = loader.get_batch('test')
@@ -92,9 +97,9 @@ def main(opt):
         # Get image info
         image_id = data['infos'][0]['id']
         image_path = data['infos'][0]['file_path']
-        
+
         print(f"Processing image {num_processed + 1}: {image_path}")
-        
+
         # Generate caption and capture attention
         with torch.no_grad():
             seq, attention_weights = vis_utils.capture_attention_weights(
@@ -103,13 +108,13 @@ def main(opt):
                      'beam_size': opt.beam_size,
                      'temperature': opt.temperature}
             )
-        
+
         # Decode sequence to words
         sents = utils.decode_sequence(vocab, seq)
         caption = sents[0]
-        
+
         print(f"Generated caption: {caption}")
-        
+
         # If no attention was captured (e.g., for multi-headed attention during beam search),
         # try extracting attention by re-running with the sequence
         if len(attention_weights) == 0:
@@ -117,24 +122,24 @@ def main(opt):
             attention_weights = vis_utils.get_attention_weights_from_sequence(
                 model, fc_feats, att_feats, att_masks, seq
             )
-        
+
         if len(attention_weights) > 0:
             # Split caption into words
             words = caption.split()
-            
+
             # Adjust attention_weights list to match words (handle potential mismatches)
             min_len = min(len(attention_weights), len(words))
             attention_weights = attention_weights[:min_len]
             words = words[:min_len]
-            
+
             print(f"Creating visualizations for {len(words)} words...")
-            
+
             # Get the actual image path
             if opt.image_folder:
                 actual_image_path = os.path.join(opt.image_folder, image_path)
             else:
                 actual_image_path = image_path
-            
+
             # Check if image exists
             if not os.path.exists(actual_image_path):
                 print(f"Warning: Image not found at {actual_image_path}")
@@ -147,10 +152,10 @@ def main(opt):
                     print(f"Skipping visualization for this image")
                     num_processed += 1
                     continue
-            
+
             # Determine attention size from features
             att_size = att_feats.size(1)
-            
+
             # Create visualizations
             vis_paths = vis_utils.visualize_attention_for_sequence(
                 actual_image_path,
@@ -159,22 +164,22 @@ def main(opt):
                 output_dir=opt.output_dir,
                 att_size=att_size
             )
-            
+
             print(f"Created {len(vis_paths)} visualization(s)")
         else:
             print("Warning: Could not extract attention weights for this image")
-        
+
         num_processed += 1
-        
+
         print()  # Empty line for readability
-        
+
         # Check if we should stop
         if opt.num_images > 0 and num_processed >= opt.num_images:
             break
-        
+
         if data['bounds']['wrapped']:
             break
-    
+
     print(f"\nProcessing complete! Processed {num_processed} image(s)")
     print(f"Visualizations saved to: {opt.output_dir}")
 
