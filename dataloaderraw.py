@@ -57,7 +57,7 @@ class DataLoaderRaw():
             from regnet import RegNet16
             net = RegNet16()
             self.feature_size = 3024
-        elif cnn_model == 'ineption':
+        elif cnn_model == 'inception':
             from inception import Inception
             net = Inception()
             self.feature_size = 2048
