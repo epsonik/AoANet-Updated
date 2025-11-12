@@ -171,14 +171,13 @@ def visualize_attention_for_sequence(image_path, attention_weights, words, outpu
         attention_map = resize_attention_to_image(vis_attention, (img.width, img.height), grid_size)
         heatmap_overlay = create_heatmap(attention_map, img_cv)
 
-        # Convert back to PIL for drawing text
+        # Convert back to PIL
         vis_image = Image.fromarray(cv2.cvtColor(heatmap_overlay, cv2.COLOR_BGR2RGB))
 
-        # Add caption and highlight the current word
-        vis_image = add_caption_to_image(vis_image, " ".join(words), word)
+        # The line to add the caption has been removed as requested.
 
         # Save the visualization
-        filename = f"{os.path.basename(image_path).split('.')[0]}_step_{i+1}_{word}.png"
+        filename = f"{os.path.basename(image_path).split('.')[0]}_step_{i+1}.png"
         save_path = os.path.join(output_dir, filename)
         vis_image.save(save_path)
         vis_paths.append(save_path)
