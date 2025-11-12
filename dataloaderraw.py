@@ -35,7 +35,7 @@ class DataLoaderRaw():
         # Dynamically import and initialize the specified CNN model
         cnn_model = opt.get('cnn_model', 'densenet161')
         if cnn_model == 'densenet121':
-            from densenet121 import DenseNet121
+            from densenet import DenseNet121
             from densenet_utils import myDensenet
             net = DenseNet121()
             self.feature_size = 1024
