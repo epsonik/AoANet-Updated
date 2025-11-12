@@ -20,30 +20,41 @@ def capture_attention_weights(model, fc_feats, att_feats, att_masks, opt):
     """
     model.eval()
 
-    # Store weights in a list
     attention_weights = []
 
-    # Define a hook to capture the attention weights
     def hook(module, input, output):
         # The 'output' of the attention module is a tuple where the second element
         # is the attention weights.
-        # Shape: (batch_size, num_heads, query_len, key_len)
-        # We take the mean over the heads.
-        weights = output[1].data.cpu().numpy()
-        attention_weights.append(np.mean(weights, axis=1))
+        if isinstance(output, tuple) and len(output) > 1:
+            weights = output[1].data.cpu().numpy()
+            # During beam search, the batch dimension may be expanded.
+            # We want to handle weights of shape (batch*beam, heads, len, len)
+            # or (batch, heads, len, len)
+            if weights.ndim > 2:
+                # Average over the attention heads.
+                attention_weights.append(np.mean(weights, axis=1))
 
-    # Register the hook on the attention module within the decoder core
     hook_handle = model.core.attention.register_forward_hook(hook)
 
     # Generate sequence
     seq, _ = model.sample(fc_feats, att_feats, att_masks, opt)
 
-    # Remove the hook
     hook_handle.remove()
 
     if attention_weights:
-        # Squeeze and stack the weights from each step
-        return seq, np.array(attention_weights).squeeze(axis=1)
+        # For beam search, we get weights for each beam. We only need the ones for the top beam.
+        # The number of steps is len(attention_weights).
+        # The first dimension of each item is batch_size * beam_size.
+        # We take the first one of each step.
+        num_steps = len(attention_weights)
+        seq_len = seq.size(1)
+
+        # Take the attention from the top beam (index 0) at each step
+        processed_weights = [att_step[0] for att_step in attention_weights]
+
+        # We might have more attention steps than words in the final sequence
+        final_weights = np.array(processed_weights[:seq_len])
+        return seq, final_weights
     else:
         return seq, []
 
@@ -64,8 +75,11 @@ def get_attention_weights_from_sequence(model, fc_feats, att_feats, att_masks, s
     attention_weights = []
 
     def hook(module, input, output):
-        weights = output[1].data.cpu().numpy()
-        attention_weights.append(np.mean(weights, axis=1))
+        if isinstance(output, tuple) and len(output) > 1:
+            weights = output[1].data.cpu().numpy()
+            if weights.ndim > 2:
+                attention_weights.append(np.mean(weights, axis=1))
+
 
     hook_handle = model.core.attention.register_forward_hook(hook)
 
@@ -94,7 +108,7 @@ def create_heatmap(attention_map, image):
     """
     Creates a heatmap overlay on the image.
     """
-    heatmap = (attention_map - np.min(attention_map)) / (np.max(attention_map) - np.min(attention_map))
+    heatmap = (attention_map - np.min(attention_map)) / (np.max(attention_map) - np.min(attention_map) + 1e-8)
     heatmap = (heatmap * 255).astype(np.uint8)
 
     colored_heatmap = cv2.applyColorMap(heatmap, cv2.COLORMAP_JET)
@@ -117,13 +131,22 @@ def add_caption_to_image(image, caption, word, font_path=None, font_size=20):
 
     x, y = 10, 10
     for w, is_highlighted in display_words:
-        text_size = draw.textsize(w, font=font)
+        # Use textbbox for more accurate size calculation
+        try:
+            bbox = draw.textbbox((x, y), w, font=font)
+        except AttributeError: # Fallback for older Pillow versions
+            bbox = draw.textsize(w, font=font)
+            bbox = (x, y, x + bbox[0], y + bbox[1])
+
+
         if is_highlighted:
-            draw.rectangle([x, y, x + text_size[0], y + text_size[1]], fill="yellow")
+            draw.rectangle(bbox, fill="yellow")
             draw.text((x, y), w, font=font, fill="black")
         else:
             draw.text((x, y), w, font=font, fill="white")
-        x += text_size[0] + 5
+
+        x = bbox[2] + 5
+
 
     return image
 
@@ -136,12 +159,20 @@ def visualize_attention_for_sequence(image_path, attention_weights, words, outpu
     img_cv = np.array(img)
     img_cv = cv2.cvtColor(img_cv, cv2.COLOR_RGB2BGR)
 
-    grid_size = int(np.sqrt(attention_weights.shape[-1]))
+    # The attention weights we get are over the input tokens.
+    # We are interested in the attention over the visual features.
+    # This corresponds to the last elements of the attention vector.
 
     vis_paths = []
 
     for i, (word, attention) in enumerate(zip(words, attention_weights)):
-        attention_map = resize_attention_to_image(attention, (img.width, img.height), grid_size)
+        # attention shape is (query_len, key_len), e.g. (1, 197)
+        # We take the last `att_size` elements, which correspond to the image features.
+        vis_attention = attention[0, -att_size:]
+        grid_size = int(np.sqrt(vis_attention.shape[0]))
+
+
+        attention_map = resize_attention_to_image(vis_attention, (img.width, img.height), grid_size)
         heatmap_overlay = create_heatmap(attention_map, img_cv)
 
         vis_image = Image.fromarray(cv2.cvtColor(heatmap_overlay, cv2.COLOR_BGR2RGB))
