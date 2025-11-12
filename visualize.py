@@ -1,4 +1,4 @@
-python
+
 """
 Script to visualize attention weights for image captioning.
 This script loads a trained model, generates captions for images,
