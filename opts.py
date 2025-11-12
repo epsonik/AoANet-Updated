@@ -104,7 +104,7 @@ def parse_opt():
     parser.add_argument('--max_length', type=int, default=20,
                     help='Maximum length during sampling')
     parser.add_argument('--length_penalty', type=str, default='',
-                    help='wu_X or avg_X, X is the alpha')
+                    help='wu_X or avg_X, X  is the alpha')
     parser.add_argument('--block_trigrams', type=int, default=0,
                     help='block repeated trigram.')
     parser.add_argument('--remove_bad_endings', type=int, default=0,
