@@ -12,6 +12,8 @@ import skimage
 import skimage.io
 from torchvision import transforms as trn
 
+from misc.resnet_utils import myResnet
+
 preprocess = trn.Compose([
     # trn.ToTensor(),
     trn.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
@@ -73,7 +75,7 @@ class DataLoaderRaw():
             self.feature_size = 2208
             print(f"Warning: CNN model '{cnn_model}' not recognized. Defaulting to densenet161.")
 
-        self.my_densenet = myDensenet(net)
+        self.my_densenet = myResnet(net)
         self.my_densenet.cuda()
         self.my_densenet.eval()
 
