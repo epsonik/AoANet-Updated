@@ -176,8 +176,8 @@ def visualize_attention_for_sequence(image_path, attention_weights, words, outpu
 
         # The line to add the caption has been removed as requested.
 
-        # Save the visualization
-        filename = f"{os.path.basename(image_path).split('.')[0]}_step_{i+1}.png"
+        # Save the visualization with the word in the filename
+        filename = f"{os.path.basename(image_path).split('.')[0]}_step_{i+1}_{word}.png"
         save_path = os.path.join(output_dir, filename)
         vis_image.save(save_path)
         vis_paths.append(save_path)
