@@ -1,96 +1,208 @@
+"""
+Script to visualize attention weights for image captioning.
+This script loads a trained model, generates captions for images,
+and creates attention heatmap visualizations.
+"""
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
 import argparse
-import json
 import os
-
-import numpy as np
 import torch
-import models
+import numpy as np
+from PIL import Image
 
-import vis_utils
-from dataloader_raw import DataLoaderRaw
+import opts
 import models
-from models import AoAModel, AttModel
+from dataloaderraw import DataLoaderRaw
+import misc.utils as utils
+import vis_utils
+
 
 def main(opt):
-    os.environ["CUDA_VISIBLE_DEVICES"] = "0"
-
-    # load the data
-    loader = DataLoaderRaw(opt)
-    # when using fusion model, we need to load region features
-    # (both image and region features are calculated in dataloader)
-    loader.ix_to_word = loader.get_vocab()
-
-    # Create the model
-    infos = json.load(open(opt.infos_path))
-    infos['opt'].vocab = loader.get_vocab()
-    model = AoAModel(infos['opt'])
-
+    # Load model and info
     print(f"Loading model from: {opt.model}")
+    with open(opt.infos_path, 'rb') as f:
+        infos = utils.pickle_load(f)
+
+    # Override and collect parameters
+    replace = ['input_fc_dir', 'input_att_dir', 'input_box_dir', 'input_label_h5',
+               'input_json', 'batch_size', 'id']
+    ignore = ['start_from']
+
+    for k in vars(infos['opt']).keys():
+        if k in replace:
+            setattr(opt, k, getattr(opt, k) or getattr(infos['opt'], k, ''))
+        elif k not in ignore:
+            if k not in vars(opt):
+                vars(opt).update({k: vars(infos['opt'])[k]})
+
+    vocab = infos['vocab']  # ix -> word mapping
+
+    # Setup the model
+    opt.vocab = vocab
+    model = models.setup(opt)
+    del opt.vocab
+
+    # Manually set special indices on the model
+    model.bos_idx = getattr(infos['opt'], 'bos_idx', 0)
+    model.eos_idx = getattr(infos['opt'], 'eos_idx', 0)
+    model.pad_idx = getattr(infos['opt'], 'pad_idx', 0)
+
     model.load_state_dict(torch.load(opt.model, map_location=torch.device('cpu')))
-    print("Model loaded successfully")
-    model.to(torch.device('cpu'))
+    model.cuda()
     model.eval()
 
-    print('start')
+    print("Model loaded successfully")
+    print(f"Vocabulary size: {len(vocab)}")
 
-    img_list = loader.get_image_path_list()
+    # Create data loader for the image
+    if opt.image_folder:
+        loader = DataLoaderRaw({
+            'folder_path': opt.image_folder,
+            'coco_json': opt.coco_json,
+            'batch_size': 1,
+            'cnn_model': opt.cnn_model
+        })
+        loader.ix_to_word = vocab
+    else:
+        raise ValueError("Must specify --image_folder")
 
-    num_of_img = opt.num_images
-    if int(num_of_img) == 0:
-        num_of_img = len(img_list)
+    # Create output directory
+    os.makedirs(opt.output_dir, exist_ok=True)
 
-    print(f'Processing images from: {opt.image_folder}')
-    print(f'Saving visualizations to: {opt.vis_path}')
-    print(f"Number of images to process: {'all' if num_of_img == len(img_list) else num_of_img}\n")
+    # Process images
+    loader.reset_iterator('test')
+    num_processed = 0
 
-    for i in range(num_of_img):
-        print(f"Processing image {i + 1}: {loader.files[i]}")
+    print(f"\nProcessing images from: {opt.image_folder}")
+    print(f"Saving visualizations to: {opt.output_dir}")
+    print(f"Number of images to process: {opt.num_images if opt.num_images > 0 else 'all'}\n")
+
+    while True:
+        # Get batch
+        data = loader.get_batch('test')
+
+        def to_cuda_tensor(x):
+            if x is None:
+                return None
+            if isinstance(x, torch.Tensor):
+                return x.cuda()
+            return torch.from_numpy(x).float().cuda()
+
+        fc_feats = to_cuda_tensor(data['fc_feats'][0:1])
+        att_feats = to_cuda_tensor(data['att_feats'][0:1])
+        att_masks = to_cuda_tensor(data.get('att_masks')[0:1]) if data.get('att_masks') is not None else None
+
+        # Get image info
+        image_id = data['infos'][0]['id']
+        image_path = data['infos'][0]['file_path']
+
+        print(f"Processing image {num_processed + 1}: {image_path}")
+
+        # Generate caption and capture attention
         with torch.no_grad():
-            tmp_att, img_path = loader.__getitem__(i)
-            if tmp_att is None:
-                continue
-            tmp_fc = torch.from_numpy(np.mean(tmp_att.numpy(), axis=1))
-            att_feats = tmp_att
-
-            # Run the model
             seq, attention_weights = vis_utils.capture_attention_weights(
-                model, tmp_fc, att_feats, None, opt, loader
+                model, fc_feats, att_feats, att_masks,
+                opt={'sample_method': opt.sample_method,
+                     'beam_size': opt.beam_size,
+                     'temperature': opt.temperature}
             )
 
-            # Create visualization
-            vis_utils.create_visualizations(
-                seq, attention_weights, img_path, loader, opt.vis_path
+        # Decode sequence to words
+        sents = utils.decode_sequence(vocab, seq)
+        caption = sents[0]
+
+        print(f"Generated caption: {caption}")
+
+        # If no attention was captured (e.g., for multi-headed attention during beam search),
+        # try extracting attention by re-running with the sequence
+        if len(attention_weights) == 0:
+            print("No attention captured during generation, extracting from sequence...")
+            attention_weights = vis_utils.get_attention_weights_from_sequence(
+                model, fc_feats, att_feats, att_masks, seq
             )
 
-    print("\nProcessing complete.")
+        if len(attention_weights) > 0:
+            # Split caption into words
+            words = caption.split()
 
+            # Adjust attention_weights list to match words (handle potential mismatches)
+            min_len = min(len(attention_weights), len(words))
+            attention_weights = attention_weights[:min_len]
+            words = words[:min_len]
+
+            print(f"Creating visualizations for {len(words)} words...")
+
+            # Get the actual image path
+            if opt.image_folder:
+                actual_image_path = image_path # DataloaderRaw returns the full path
+            else:
+                actual_image_path = image_path
+
+            # Check if image exists
+            if not os.path.exists(actual_image_path):
+                print(f"Warning: Image not found at {actual_image_path}")
+                # Try to find the image in the folder
+                possible_path = os.path.join(opt.image_folder, os.path.basename(image_path))
+                if os.path.exists(possible_path):
+                    actual_image_path = possible_path
+                    print(f"Found image at: {actual_image_path}")
+                else:
+                    print(f"Skipping visualization for this image")
+                    num_processed += 1
+                    continue
+
+            # Determine attention size from features
+            att_size = att_feats.size(1)
+
+            # Create visualizations
+            vis_paths = vis_utils.visualize_attention_for_sequence(
+                actual_image_path,
+                attention_weights,
+                words,
+                output_dir=opt.output_dir,
+                att_size=att_size
+            )
+
+            print(f"Created {len(vis_paths)} visualization(s)")
+        else:
+            print("Warning: Could not extract attention weights for this image")
+
+        num_processed += 1
+
+        print()  # Empty line for readability
+
+        # Check if we should stop
+        if opt.num_images > 0 and num_processed >= opt.num_images:
+            break
+
+        if data['bounds']['wrapped']:
+            break
+
+    print(f"\nProcessing complete! Processed {num_processed} image(s)")
+    print(f"Visualizations saved to: {opt.output_dir}")
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    # input json
-    parser.add_argument('--model', type=str,
-                        default='log_aoanet/model-best.pth',
-                        help='path to model to evaluate')
-    parser.add_argument('--infos_path', type=str,
-                        default='log_aoanet/infos_aoanet-best.json',
-                        help='path to infos to evaluate')
 
-    # parser.add_argument('--cnn_model', type=str, default='densenet161',
-    #                     help='resnet101, resnet152, densenet161')
-    parser.add_argument('--cnn_model', type=str, default='resnet101',
-                        help='resnet101, resnet152, densenet161')
+    # Model parameters
+    parser.add_argument('--model', type=str, required=True,
+                        help='path to model checkpoint (.pth file)')
+    parser.add_argument('--infos_path', type=str, required=True,
+                        help='path to infos file (.pkl file)')
+    parser.add_argument('--cnn_model', type=str, default='densenet201',
+                        help='CNN model for feature extraction (resnet101, resnet152, etc.)')
+
+
+    # Output parameters
+    parser.add_argument('--output_dir', type=str, default='vis/attention',
+                        help='directory to save attention visualizations')
+
+    opts.add_eval_options(parser)
+
     opt = parser.parse_args()
 
-    # Set visualization path
-    opt.vis_path = f"vis/{opt.cnn_model}_aoanet"
-    if not os.path.exists(opt.vis_path):
-        os.makedirs(opt.vis_path)
-
-    # Set paths for the script
-    opt.folder_path = opt.image_folder
-
+    # Run visualization
     main(opt)
