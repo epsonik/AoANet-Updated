@@ -213,6 +213,12 @@ class AoAModel(AttModel):
         # Dynamically adjust att_embed layer if input feature size doesn't match
         input_feat_size = att_feats.size(-1)
         if input_feat_size != self.att_feat_size:
+            import warnings
+            warnings.warn(
+                f"Input feature size ({input_feat_size}) does not match model's expected size ({self.att_feat_size}). "
+                f"Recreating att_embed layer. Note: This discards learned weights and may impact performance.",
+                RuntimeWarning
+            )
             # Create a new att_embed layer with the correct input size
             self.att_embed = nn.Sequential(
                 nn.Linear(input_feat_size, self.rnn_size),

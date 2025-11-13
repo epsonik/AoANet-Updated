@@ -73,17 +73,15 @@ class DataLoaderRaw():
             self.my_cnn = myDensenet(net)
         elif cnn_model == 'resnet101':
             from resnet_utils import myResnet
-            from resnet import resnet101
             import torchvision.models as models
-            # Load pretrained ResNet101
+            # Load pretrained ResNet101 from torchvision
             net = models.resnet101(pretrained=True)
             self.feature_size = 2048
             self.my_cnn = myResnet(net)
         elif cnn_model == 'resnet152':
             from resnet_utils import myResnet
-            from resnet import resnet152
             import torchvision.models as models
-            # Load pretrained ResNet152
+            # Load pretrained ResNet152 from torchvision
             net = models.resnet152(pretrained=True)
             self.feature_size = 2048
             self.my_cnn = myResnet(net)
