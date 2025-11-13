@@ -72,18 +72,22 @@ class DataLoaderRaw():
             self.feature_size = 2048
             self.my_cnn = myDensenet(net)
         elif cnn_model == 'resnet101':
+            import resnet
             from resnet_utils import myResnet
-            net= torch.load(os.path.join('./data/resnet101.pth'))
+            net = getattr(resnet, cnn_model)()
+            net.load_state_dict(torch.load('./data/imagenet_weights/' + self.cnn_model + '.pth'))
+            self.my_cnn = myResnet(self.my_resnet)
             self.feature_size = 2048
-            self.my_cnn = myResnet(net)
         elif cnn_model == 'resnet152':
+            import resnet
             from resnet_utils import myResnet
-            net = torch.load(os.path.join('./data/resnet152.pth'))
+            net = getattr(resnet, cnn_model)()
+            net.load_state_dict(torch.load('./data/imagenet_weights/' + self.cnn_model + '.pth'))
+            self.my_cnn = myResnet(self.my_resnet)
             self.feature_size = 2048
-            self.my_cnn = myResnet(net)
-        else:  # Default to densenet161
-            from densenet_utils import myDensenet
+        else:
             from densenet161 import DenseNet161
+            from densenet_utils import myDensenet
             net = DenseNet161()
             self.feature_size = 2208
             print(f"Warning: CNN model '{cnn_model}' not recognized. Defaulting to densenet161.")
