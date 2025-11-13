@@ -12,8 +12,8 @@ import models
 
 import vis_utils
 from dataloader_raw import DataLoaderRaw
-from models import AttModel, AoAModel
-
+import models
+from models import AoAModel, AttModel
 
 def main(opt):
     os.environ["CUDA_VISIBLE_DEVICES"] = "0"
