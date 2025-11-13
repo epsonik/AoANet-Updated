@@ -63,6 +63,9 @@ def capture_attention_weights(model, fc_feats, att_feats, att_masks, opt):
         # model._sample returns (seq, seqLogprobs)
         seq, _ = model._sample(fc_feats, att_feats, att_masks, opt)
 
+        # FIX: Move the generated sequence to the same device as the model/features
+        seq = seq.to(fc_feats.device)
+
         # Then, use _forward to get attention weights for the generated sequence
         # model._forward returns (logit, state, att_weights)
         _, _, output_att = model._forward(fc_feats, att_feats, seq, att_masks)
@@ -77,6 +80,8 @@ def get_attention_weights_from_sequence(model, fc_feats, att_feats, att_masks, s
     """
     model.eval()
     with torch.no_grad():
+        # Ensure seq is on the correct device before passing to _forward
+        seq = seq.to(fc_feats.device)
         # Use _forward to get attention weights for a given sequence
         _, _, output_att = model._forward(fc_feats, att_feats, seq, att_masks)
     return output_att
