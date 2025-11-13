@@ -71,10 +71,10 @@ def test_dataloaderraw_code_structure():
     if uses_my_cnn:
         print("✓ Uses self.my_cnn for CNN model reference")
     
-    # Verify torchvision.models is used for resnet152
-    uses_torchvision = "torchvision.models" in content
-    if uses_torchvision and has_resnet152:
-        print("✓ Uses torchvision.models for resnet152 initialization")
+    # Verify ResNet wrapper classes are used for resnet152
+    uses_resnet_wrapper = "from resnet152 import ResNet152" in content or "from resnet101 import ResNet101" in content
+    if uses_resnet_wrapper and has_resnet152:
+        print("✓ Uses ResNet wrapper classes for initialization")
     
     print("\n" + "=" * 70)
     print("Test Results:")
@@ -85,7 +85,7 @@ def test_dataloaderraw_code_structure():
         uses_myResnet and 
         has_myResnet_import and
         uses_my_cnn and
-        uses_torchvision
+        uses_resnet_wrapper
     )
     
     if all_checks_passed:
@@ -94,7 +94,8 @@ def test_dataloaderraw_code_structure():
         print("  - resnet152 is recognized as a valid CNN model")
         print("  - Feature size is set to 2048 (matching expected dimensions)")
         print("  - myResnet wrapper is used (not myDensenet)")
-        print("  - torchvision.models is used for initialization")
+        print("  - ResNet wrapper classes are used for initialization")
+        print("  - Supports loading custom .pth weights")
         print("  - Code uses self.my_cnn for better generalization")
         return True
     else:
@@ -109,8 +110,8 @@ def test_dataloaderraw_code_structure():
             print("  - myResnet import missing")
         if not uses_my_cnn:
             print("  - Not using self.my_cnn")
-        if not uses_torchvision:
-            print("  - torchvision.models not used")
+        if not uses_resnet_wrapper:
+            print("  - ResNet wrapper classes not used")
         return False
 
 def test_model_feature_sizes():

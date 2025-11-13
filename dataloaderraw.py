@@ -61,13 +61,17 @@ class DataLoaderRaw():
             self.feature_size = 1920
             self.my_cnn = myDensenet(net)
         elif cnn_model == 'resnet101':
-            import torchvision.models as models
-            net = models.resnet101(weights=models.ResNet101_Weights.IMAGENET1K_V1)
+            from resnet101 import ResNet101
+            # Check if custom weights path is provided
+            weights_path = opt.get('resnet101_weights', './data/imagenet_weights/resnet101.pth')
+            net = ResNet101(weights_path=weights_path if os.path.exists(weights_path) else None)
             self.feature_size = 2048
             self.my_cnn = myResnet(net)
         elif cnn_model == 'resnet152':
-            import torchvision.models as models
-            net = models.resnet152(weights=models.ResNet152_Weights.IMAGENET1K_V1)
+            from resnet152 import ResNet152
+            # Check if custom weights path is provided
+            weights_path = opt.get('resnet152_weights', './data/imagenet_weights/resnet152.pth')
+            net = ResNet152(weights_path=weights_path if os.path.exists(weights_path) else None)
             self.feature_size = 2048
             self.my_cnn = myResnet(net)
         elif cnn_model == 'regnet':
