@@ -9,7 +9,7 @@ import os
 import numpy as np
 import torch
 from PIL import Image, ImageDraw, ImageFont
-from captioning.models import AoAModel
+from models import AoAModel
 
 import models
 import vis_utils
