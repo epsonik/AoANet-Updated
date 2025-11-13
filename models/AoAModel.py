@@ -210,6 +210,18 @@ class AoAModel(AttModel):
     def _prepare_feature(self, fc_feats, att_feats, att_masks):
         att_feats, att_masks = self.clip_att(att_feats, att_masks)
 
+        # Dynamically adjust att_embed layer if input feature size doesn't match
+        input_feat_size = att_feats.size(-1)
+        if input_feat_size != self.att_feat_size:
+            # Create a new att_embed layer with the correct input size
+            self.att_embed = nn.Sequential(
+                nn.Linear(input_feat_size, self.rnn_size),
+                nn.ReLU(),
+                nn.Dropout(self.drop_prob_lm)
+            ).to(att_feats.device)
+            # Update the stored feature size
+            self.att_feat_size = input_feat_size
+
         att_feats = pack_wrapper(self.att_embed, att_feats, att_masks)
         att_feats = self.refiner(att_feats, att_masks)
 
