@@ -35,41 +35,58 @@ class DataLoaderRaw():
 
         # Dynamically import and initialize the specified CNN model
         cnn_model = opt.get('cnn_model', 'densenet161')
-        from densenet_utils import myDensenet
 
         if cnn_model == 'densenet121':
+            from densenet_utils import myDensenet
             from densenet import DenseNet121
             net = DenseNet121()
             self.feature_size = 1024
+            self.my_cnn = myDensenet(net)
         elif cnn_model == 'densenet161':
+            from densenet_utils import myDensenet
             from densenet161 import DenseNet161
             net = DenseNet161()
             self.feature_size = 2208
+            self.my_cnn = myDensenet(net)
         elif cnn_model == 'densenet169':
+            from densenet_utils import myDensenet
             from densenet169 import DenseNet169
             net = DenseNet169()
             self.feature_size = 1664
+            self.my_cnn = myDensenet(net)
         elif cnn_model == 'densenet201':
+            from densenet_utils import myDensenet
             from densenet201 import DenseNet201
             net = DenseNet201()
             self.feature_size = 1920
+            self.my_cnn = myDensenet(net)
+        elif cnn_model == 'resnet152':
+            import torchvision.models as models
+            net = models.resnet152(weights=models.ResNet152_Weights.IMAGENET1K_V1)
+            self.feature_size = 2048
+            self.my_cnn = myResnet(net)
         elif cnn_model == 'regnet':
+            from densenet_utils import myDensenet
             from regnet import RegNet16
             net = RegNet16()
             self.feature_size = 3024
+            self.my_cnn = myDensenet(net)
         elif cnn_model == 'inception':
+            from densenet_utils import myDensenet
             from inception import Inception
             net = Inception()
             self.feature_size = 2048
+            self.my_cnn = myDensenet(net)
         else:  # Default to densenet161
+            from densenet_utils import myDensenet
             from densenet161 import DenseNet161
             net = DenseNet161()
             self.feature_size = 2208
+            self.my_cnn = myDensenet(net)
             print(f"Warning: CNN model '{cnn_model}' not recognized. Defaulting to densenet161.")
 
-        self.my_densenet = myDensenet(net)
-        self.my_densenet.cuda()
-        self.my_densenet.eval()
+        self.my_cnn.cuda()
+        self.my_cnn.eval()
 
         # load the json file which contains additional information about the dataset
         print('DataLoaderRaw loading images from folder: ', self.folder_path)
@@ -141,7 +158,7 @@ class DataLoaderRaw():
             img = torch.from_numpy(img.transpose([2, 0, 1])).cuda()
             img = preprocess(img)
             with torch.no_grad():
-                tmp_fc, tmp_att = self.my_densenet(img)
+                tmp_fc, tmp_att = self.my_cnn(img)
 
             fc_batch[i] = tmp_fc.data.cpu().float().numpy()
             att_batch[i] = tmp_att.data.cpu().float().numpy()
