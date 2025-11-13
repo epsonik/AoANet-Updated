@@ -75,15 +75,15 @@ class DataLoaderRaw():
             import resnet
             from resnet_utils import myResnet
             net = getattr(resnet, cnn_model)()
-            net.load_state_dict(torch.load('./data/imagenet_weights/' + self.cnn_model + '.pth'))
-            self.my_cnn = myResnet(self.my_resnet)
+            net.load_state_dict(torch.load('./data/imagenet_weights/' + cnn_model + '.pth'))
+            self.my_cnn = myResnet(net)
             self.feature_size = 2048
         elif cnn_model == 'resnet152':
             import resnet
             from resnet_utils import myResnet
             net = getattr(resnet, cnn_model)()
-            net.load_state_dict(torch.load('./data/imagenet_weights/' + self.cnn_model + '.pth'))
-            self.my_cnn = myResnet(self.my_resnet)
+            net.load_state_dict(torch.load('./data/imagenet_weights/' + cnn_model + '.pth'))
+            self.my_cnn = myResnet(net)
             self.feature_size = 2048
         else:
             from densenet161 import DenseNet161
