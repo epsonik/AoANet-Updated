@@ -125,8 +125,10 @@ def main(opt):
             )
 
         if len(attention_weights) > 0:
-            # Split caption into words
-            words = caption.split()
+            # Manually decode sequence to include special tokens for visualization
+            words = ['START'] + caption.split()
+            # The model stops generating after the EOS token, so the last attention corresponds to it
+            words.append('STOP')
 
             # Adjust attention_weights list to match words (handle potential mismatches)
             min_len = min(len(attention_weights), len(words))
