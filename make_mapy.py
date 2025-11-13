@@ -2,7 +2,6 @@
 #!/usr/bin/env python3
 import re
 import argparse
-import shutil
 from pathlib import Path
 from typing import List, Optional, Iterable
 
@@ -19,62 +18,6 @@ def extract_index(name: str) -> Optional[int]:
     """Return numeric prefix of a filename stem if present."""
     m = NUM_RE.match(name)
     return int(m.group(1)) if m else None
-
-
-def get_group_prefix(stem: str) -> Optional[str]:
-    """
-    Return group prefix based on the first three underscore-separated parts of the stem.
-    Example: COCO_test2014_000000000027_step_10 -> COCO_test2014_000000000027
-    """
-    parts = stem.split('_')
-    if len(parts) >= 3:
-        return '_'.join(parts[:3])
-    return None
-
-
-# python
-def group_images_by_prefix(base: Path) -> None:
-    """
-    Group PNG images under `base` into directories named by the first three parts
-    of the filename stem, but keep them inside the original top-level folder
-    under `base`. Skips files starting with SKIP_PREFIX and files named original.png.
-    """
-    for p in sorted(base.rglob('*.png')):
-        if p.name.startswith(SKIP_PREFIX):
-            continue
-        if p.name == 'original.png':
-            continue
-
-        prefix = get_group_prefix(p.stem)
-        if not prefix:
-            continue
-
-        # Determine the original top-level folder under `base` (if any)
-        try:
-            rel = p.relative_to(base)
-            parts = rel.parts
-            if len(parts) >= 2:
-                # keep inside the same top-level container (parts[0])
-                container = parts[0]
-                target_dir = base / container / prefix
-            else:
-                # image is directly under base
-                target_dir = base / prefix
-        except Exception:
-            # fallback: put directly under base/prefix
-            target_dir = base / prefix
-
-        if p.parent == target_dir:
-            continue
-
-        target_dir.mkdir(parents=True, exist_ok=True)
-        target_path = target_dir / p.name
-
-        try:
-            shutil.move(str(p), str(target_path))
-            print(f'Moved {p} -> {target_path}')
-        except Exception as e:
-            print(f'Failed to move {p} -> {target_path}: {e}')
 
 
 def build_tex_for_folder(folder: Path, base_root: Path, relative_base: Path) -> None:
@@ -181,9 +124,6 @@ def main() -> None:
     if not base.exists() or not base.is_dir():
         print('Base directory not found:', base)
         return
-
-    # First: group images by prefix into subfolders under base
-    group_images_by_prefix(base)
 
     rel_base = Path(args.relative_base)
     for img_folder in find_image_folders(base):

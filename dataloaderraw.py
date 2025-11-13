@@ -61,21 +61,13 @@ class DataLoaderRaw():
             from inception import Inception
             net = Inception()
             self.feature_size = 2048
-        elif cnn_model == 'resnet101':
-            import resnet
-            net = resnet.resnet101()
-            self.feature_size = 2048
-        elif cnn_model == 'resnet152':
-            import resnet
-            net = resnet.resnet152()
-            self.feature_size = 2048
         else:  # Default to densenet161
             from densenet161 import DenseNet161
             net = DenseNet161()
             self.feature_size = 2208
             print(f"Warning: CNN model '{cnn_model}' not recognized. Defaulting to densenet161.")
 
-        self.my_densenet = myResnet(net)
+        self.my_densenet = myDensenet(net)
         self.my_densenet.cuda()
         self.my_densenet.eval()
 
