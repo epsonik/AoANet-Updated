@@ -9,9 +9,10 @@ import os
 import numpy as np
 import torch
 from PIL import Image, ImageDraw, ImageFont
-from models import AoAModel
+import models
 
 import models
+from models import AoAModel
 import vis_utils
 from dataloader_raw import DataLoaderRaw
 from models import AttModel
