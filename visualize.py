@@ -8,14 +8,12 @@ import os
 
 import numpy as np
 import torch
-from PIL import Image, ImageDraw, ImageFont
 import models
 
-import models
-from models import AoAModel
 import vis_utils
 from dataloader_raw import DataLoaderRaw
-from models import AttModel
+from models import AttModel, AoAModel
+
 
 def main(opt):
     os.environ["CUDA_VISIBLE_DEVICES"] = "0"
