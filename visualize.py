@@ -50,7 +50,8 @@ def main(opt):
     model.eos_idx = getattr(infos['opt'], 'eos_idx', 0)
     model.pad_idx = getattr(infos['opt'], 'pad_idx', 0)
 
-    model.load_state_dict(torch.load(opt.model, map_location=torch.device('cpu')))
+    # Use weights_only=True for security
+    model.load_state_dict(torch.load(opt.model, map_location=torch.device('cpu'), weights_only=True))
     model.cuda()
     model.eval()
 
@@ -116,14 +117,6 @@ def main(opt):
 
         print(f"Generated caption: {caption}")
 
-        # If no attention was captured (e.g., for multi-headed attention during beam search),
-        # try extracting attention by re-running with the sequence
-        if len(attention_weights) == 0:
-            print("No attention captured during generation, extracting from sequence...")
-            attention_weights = vis_utils.get_attention_weights_from_sequence(
-                model, fc_feats, att_feats, att_masks, seq
-            )
-
         if len(attention_weights) > 0:
             # Manually decode sequence to include special tokens for visualization
             words = ['START'] + caption.split()
@@ -138,10 +131,7 @@ def main(opt):
             print(f"Creating visualizations for {len(words)} words...")
 
             # Get the actual image path
-            if opt.image_folder:
-                actual_image_path = image_path # DataloaderRaw returns the full path
-            else:
-                actual_image_path = image_path
+            actual_image_path = image_path
 
             # Check if image exists
             if not os.path.exists(actual_image_path):
@@ -173,13 +163,11 @@ def main(opt):
             print("Warning: Could not extract attention weights for this image")
 
         num_processed += 1
-
-        print()  # Empty line for readability
+        print()
 
         # Check if we should stop
         if opt.num_images > 0 and num_processed >= opt.num_images:
             break
-
         if data['bounds']['wrapped']:
             break
 
@@ -188,23 +176,10 @@ def main(opt):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-
-    # Model parameters
-    parser.add_argument('--model', type=str, required=True,
-                        help='path to model checkpoint (.pth file)')
-    parser.add_argument('--infos_path', type=str, required=True,
-                        help='path to infos file (.pkl file)')
-    parser.add_argument('--cnn_model', type=str, default='densenet201',
-                        help='CNN model for feature extraction (resnet101, resnet152, etc.)')
-
-
-    # Output parameters
-    parser.add_argument('--output_dir', type=str, default='vis/attention',
-                        help='directory to save attention visualizations')
-
+    parser.add_argument('--model', type=str, required=True, help='path to model checkpoint (.pth file)')
+    parser.add_argument('--infos_path', type=str, required=True, help='path to infos file (.pkl file)')
+    parser.add_argument('--cnn_model', type=str, default='densenet201', help='CNN model for feature extraction')
+    parser.add_argument('--output_dir', type=str, default='vis/attention', help='directory to save attention visualizations')
     opts.add_eval_options(parser)
-
     opt = parser.parse_args()
-
-    # Run visualization
     main(opt)
