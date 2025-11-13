@@ -1,3 +1,4 @@
+CUDA_VISIBLE_DEVICES=3
 python visualize.py \
     --model /home/bartosiewicz/mateusz/resnet152/log_aoanet/model-best.pth \
     --infos_path /home/bartosiewicz/mateusz/resnet152/log_aoanet/infos_aoanet-best.pkl \
