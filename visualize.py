@@ -9,13 +9,12 @@ import os
 import numpy as np
 import torch
 from PIL import Image, ImageDraw, ImageFont
+from captioning.models import AoAModel
 
 import models
 import vis_utils
 from dataloader_raw import DataLoaderRaw
 from models import AttModel
-from models.AoAModel import AoAModel
-
 
 def main(opt):
     os.environ["CUDA_VISIBLE_DEVICES"] = "0"
