@@ -1,11 +1,26 @@
-"""
-Zmodyfikowany plik AttModel, aby zwracać wagi atencji dla wizualizacji.
-"""
+# This file contains Att2in2, AdaAtt, AdaAttMO, TopDown model
+
+# AdaAtt is from Knowing When to Look: Adaptive Attention via A Visual Sentinel for Image Captioning
+# https://arxiv.org/abs/1612.01887
+# AdaAttMO is a modified version with maxout lstm
+
+# Att2in is from Self-critical Sequence Training for Image Captioning
+# https://arxiv.org/abs/1612.00563
+# In this file we only have Att2in2, which is a slightly different version of att2in,
+# in which the img feature embedding and word embedding is the same as what in adaatt.
+
+# TopDown is from Bottom-Up and Top-Down Attention for Image Captioning and VQA
+# https://arxiv.org/abs/1707.07998
+# However, it may not be identical to the author's architecture.
+
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import numpy as np
-
 from torch.nn.utils.rnn import PackedSequence, pack_padded_sequence, pad_packed_sequence
 from functools import reduce
 from .CaptionModel import CaptionModel
@@ -136,8 +151,7 @@ class AttModel(CaptionModel):
             if i >= 1 and seq[:, i].sum() == 0:
                 break
 
-            # ZMIANA: Zignoruj zwracane wagi atencji podczas treningu
-            output, state, _ = self.get_logprobs_state(it, p_fc_feats, p_att_feats, pp_att_feats, p_att_masks, state)
+            output, state = self.get_logprobs_state(it, p_fc_feats, p_att_feats, pp_att_feats, p_att_masks, state)
             outputs[:, i] = output
 
         return outputs
@@ -146,15 +160,12 @@ class AttModel(CaptionModel):
         # 'it' contains a word index
         xt = self.embed(it)
 
-        # ZMIANA: self.core zwraca teraz (output, state, alpha)
-        output, state, alpha = self.core(xt, fc_feats, att_feats, p_att_feats, state, att_masks)
+        output, state = self.core(xt, fc_feats, att_feats, p_att_feats, state, att_masks)
         logprobs = F.log_softmax(self.logit(output), dim=1)
 
-        return logprobs, state, alpha
+        return logprobs, state
 
     def _sample_beam(self, fc_feats, att_feats, att_masks=None, opt={}):
-        # Ta metoda nie została zmodyfikowana, aby zwracać wagi atencji.
-        # Wymagałoby to podobnych, ale bardziej złożonych zmian w logice beam search.
         beam_size = opt.get('beam_size', 10)
         batch_size = fc_feats.size(0)
 
@@ -178,8 +189,8 @@ class AttModel(CaptionModel):
                 if t == 0:  # input <bos>
                     it = fc_feats.new_zeros([beam_size], dtype=torch.long)
 
-                logprobs, state, _ = self.get_logprobs_state(it, tmp_fc_feats, tmp_att_feats, tmp_p_att_feats,
-                                                             tmp_att_masks, state)
+                logprobs, state = self.get_logprobs_state(it, tmp_fc_feats, tmp_att_feats, tmp_p_att_feats,
+                                                          tmp_att_masks, state)
 
             self.done_beams[k] = self.beam_search(state, logprobs, tmp_fc_feats, tmp_att_feats, tmp_p_att_feats,
                                                   tmp_att_masks, opt=opt)
@@ -196,12 +207,7 @@ class AttModel(CaptionModel):
         decoding_constraint = opt.get('decoding_constraint', 0)
         block_trigrams = opt.get('block_trigrams', 0)
         remove_bad_endings = opt.get('remove_bad_endings', 0)
-
-        # ZMIANA: Nowa opcja kontrolująca zwracanie wag
-        return_att_weights = opt.get('return_att_weights', False)
-
         if beam_size > 1:
-            # Zwracanie wag nie jest zaimplementowane dla beam search
             return self._sample_beam(fc_feats, att_feats, att_masks, opt)
 
         batch_size = fc_feats.size(0)
@@ -209,75 +215,73 @@ class AttModel(CaptionModel):
 
         p_fc_feats, p_att_feats, pp_att_feats, p_att_masks = self._prepare_feature(fc_feats, att_feats, att_masks)
 
-        trigrams = []
+        trigrams = []  # will be a list of batch_size dictionaries
 
-        # ZMIANA: Używamy listy, aby dynamicznie dodawać tokeny i wagi
-        seq_list = []
-        logprobs_list = []
-        att_weights_list = []
-
-        # Zaczynamy z tokenem <bos>
-        it = fc_feats.new_zeros(batch_size, dtype=torch.long)
-
-        # Pętla generująca, do seq_length + 1 kroków (+1 dla <eos>)
+        seq = fc_feats.new_zeros((batch_size, self.seq_length), dtype=torch.long)
+        seqLogprobs = fc_feats.new_zeros(batch_size, self.seq_length)
         for t in range(self.seq_length + 1):
+            if t == 0:  # input <bos>
+                it = fc_feats.new_zeros(batch_size, dtype=torch.long)
 
-            # Pobierz logprobs, stan i wagi atencji (alpha)
-            logprobs, state, alpha = self.get_logprobs_state(it, p_fc_feats, p_att_feats, pp_att_feats, p_att_masks,
-                                                             state)
+            logprobs, state = self.get_logprobs_state(it, p_fc_feats, p_att_feats, pp_att_feats, p_att_masks, state)
 
             if decoding_constraint and t > 0:
                 tmp = logprobs.new_zeros(logprobs.size())
-                # Użyj ostatniego elementu z listy sekwencji
-                tmp.scatter_(1, seq_list[-1].data.unsqueeze(1), float('-inf'))
+                tmp.scatter_(1, seq[:, t - 1].data.unsqueeze(1), float('-inf'))
                 logprobs = logprobs + tmp
 
             if remove_bad_endings and t > 0:
                 tmp = logprobs.new_zeros(logprobs.size())
-                prev_bad = np.isin(seq_list[-1].data.cpu().numpy(), self.bad_endings_ix)
+                prev_bad = np.isin(seq[:, t - 1].data.cpu().numpy(), self.bad_endings_ix)
+                # Impossible to generate remove_bad_endings
                 tmp[torch.from_numpy(prev_bad.astype('uint8')), 0] = float('-inf')
                 logprobs = logprobs + tmp
 
+            # Mess with trigrams
             if block_trigrams and t >= 3:
-                # Ta logika wymagałaby dostosowania do nowej struktury seq_list
-                # Na razie pomijamy dla uproszczenia
-                pass
+                # Store trigram generated at last step
+                prev_two_batch = seq[:, t - 3:t - 1]
+                for i in range(batch_size):  # = seq.size(0)
+                    prev_two = (prev_two_batch[i][0].item(), prev_two_batch[i][1].item())
+                    current = seq[i][t - 1]
+                    if t == 3:  # initialize
+                        trigrams.append({prev_two: [current]})  # {LongTensor: list containing 1 int}
+                    elif t > 3:
+                        if prev_two in trigrams[i]:  # add to list
+                            trigrams[i][prev_two].append(current)
+                        else:  # create list
+                            trigrams[i][prev_two] = [current]
+                # Block used trigrams at next step
+                prev_two_batch = seq[:, t - 2:t]
+                mask = torch.zeros(logprobs.size(), requires_grad=False).cuda()  # batch_size x vocab_size
+                for i in range(batch_size):
+                    prev_two = (prev_two_batch[i][0].item(), prev_two_batch[i][1].item())
+                    if prev_two in trigrams[i]:
+                        for j in trigrams[i][prev_two]:
+                            mask[i, j] += 1
+                # Apply mask to log probs
+                # logprobs = logprobs - (mask * 1e9)
+                alpha = 2.0  # = 4
+                logprobs = logprobs + (mask * -0.693 * alpha)  # ln(1/2) * alpha (alpha -> infty works best)
 
-            # Próbkuj następne słowo
+            # sample the next word
+            if t == self.seq_length:  # skip if we achieve maximum length
+                break
             it, sampleLogprobs = self.sample_next_word(logprobs, sample_method, temperature)
 
-            # Zapisz wygenerowany token, logprob i wagi atencji
-            seq_list.append(it)
-            logprobs_list.append(sampleLogprobs.view(-1))
-            if return_att_weights:
-                att_weights_list.append(alpha.detach().cpu())
-
-            # Sprawdź, czy wszystkie sekwencje w batchu się zakończyły (wygenerowały <eos>)
-            all_finished = (torch.stack(seq_list, 1) == 0).any(1).all()
-            if all_finished:
+            # stop when all finished
+            if t == 0:
+                unfinished = it > 0
+            else:
+                unfinished = unfinished * (it > 0)
+            it = it * unfinished.type_as(it)
+            seq[:, t] = it
+            seqLogprobs[:, t] = sampleLogprobs.view(-1)
+            # quit loop if all sequences have finished
+            if unfinished.sum() == 0:
                 break
 
-        # Konwertuj listy na tensory
-        # seq ma teraz o jeden wymiar więcej na początku
-        seq = torch.stack(seq_list, 1)
-        seqLogprobs = torch.stack(logprobs_list, 1)
-
-        # Wytnij sekwencje, aby miały maksymalną długość seq_length
-        # (ponieważ dodaliśmy <eos>, może być o 1 za długa)
-        final_seq = fc_feats.new_zeros((batch_size, self.seq_length), dtype=torch.long)
-        final_logprobs = fc_feats.new_zeros(batch_size, self.seq_length)
-
-        final_len = min(seq.size(1), self.seq_length)
-        final_seq[:, :final_len] = seq[:, :final_len]
-        final_logprobs[:, :final_len] = seqLogprobs[:, :final_len]
-
-        if return_att_weights:
-            # Stakuj wagi i przytnij do odpowiedniej długości
-            att_weights = torch.stack(att_weights_list, 1)
-            final_att_weights = att_weights[:, :final_len, :]
-            return final_seq, final_logprobs, final_att_weights
-
-        return final_seq, final_logprobs
+        return seq, seqLogprobs
 
 
 class AdaAtt_lstm(nn.Module):
@@ -422,12 +426,7 @@ class AdaAtt_attention(nn.Module):
 
         if att_masks is not None:
             att_masks = att_masks.view(-1, att_size)
-            # Stwórz nową maskę, dodając kolumnę jedynek dla 'fake_region'
-            # (zakładamy, że jest on zawsze obecny, więc jego maska to 1)
-            one_mask = att_masks.new_ones(att_masks.size(0), 1)
-            full_mask = torch.cat([one_mask, att_masks], 1)
-            PI = PI * full_mask
-            # Ponowna normalizacja po nałożeniu maski
+            PI = PI * torch.cat([att_masks[:, :1], att_masks], 1)  # assume one one at the first time step.
             PI = PI / PI.sum(1, keepdim=True)
 
         visAtt = torch.bmm(PI.unsqueeze(1), img_all)
@@ -437,9 +436,7 @@ class AdaAtt_attention(nn.Module):
 
         h = torch.tanh(self.att2h(atten_out))
         h = F.dropout(h, self.drop_prob_lm, self.training)
-
-        # ZMIANA: Zwróć h oraz wagi atencji PI
-        return h, PI
+        return h
 
 
 class AdaAttCore(nn.Module):
@@ -450,12 +447,8 @@ class AdaAttCore(nn.Module):
 
     def forward(self, xt, fc_feats, att_feats, p_att_feats, state, att_masks=None):
         h_out, p_out, state = self.lstm(xt, fc_feats, state)
-
-        # ZMIANA: attention zwraca teraz (atten_out, alpha)
-        atten_out, alpha = self.attention(h_out, p_out, att_feats, p_att_feats, att_masks)
-
-        # ZMIANA: Zwróć atten_out, state i alpha
-        return atten_out, state, alpha
+        atten_out = self.attention(h_out, p_out, att_feats, p_att_feats, att_masks)
+        return atten_out, state
 
 
 class TopDownCore(nn.Module):
@@ -473,8 +466,7 @@ class TopDownCore(nn.Module):
 
         h_att, c_att = self.att_lstm(att_lstm_input, (state[0][0], state[1][0]))
 
-        # ZMIANA: Załóżmy, że Attention zwraca (att, alpha)
-        att, alpha = self.attention(h_att, att_feats, p_att_feats, att_masks)
+        att = self.attention(h_att, att_feats, p_att_feats, att_masks)
 
         lang_lstm_input = torch.cat([att, h_att], 1)
         # lang_lstm_input = torch.cat([att, F.dropout(h_att, self.drop_prob_lm, self.training)], 1) ?????
@@ -484,9 +476,7 @@ class TopDownCore(nn.Module):
         output = F.dropout(h_lang, self.drop_prob_lm, self.training)
         state = (torch.stack([h_att, h_lang]), torch.stack([c_att, c_lang]))
 
-        # ZMIANA: zwróć output, state i wagi atencji alpha
-        # Uwaga: klasa Attention nie została zdefiniowana w tym pliku, więc to jest koncepcyjna zmiana
-        return output, state, alpha
+        return output, state
 
 
 ############################################################################
@@ -499,5 +489,323 @@ from .FCModel import LSTMCore
 
 
 class StackAttCore(nn.Module):
-    # Ta klasa nie została zmodyfikowana
-    pass
+    def __init__(self, opt, use_maxout=False):
+        super(StackAttCore, self).__init__()
+        self.drop_prob_lm = opt.drop_prob_lm
+
+        # self.att0 = Attention(opt)
+        self.att1 = Attention(opt)
+        self.att2 = Attention(opt)
+
+        opt_input_encoding_size = opt.input_encoding_size
+        opt.input_encoding_size = opt.input_encoding_size + opt.rnn_size
+        self.lstm0 = LSTMCore(opt)  # att_feat + word_embedding
+        opt.input_encoding_size = opt.rnn_size * 2
+        self.lstm1 = LSTMCore(opt)
+        self.lstm2 = LSTMCore(opt)
+        opt.input_encoding_size = opt_input_encoding_size
+
+        # self.emb1 = nn.Linear(opt.rnn_size, opt.rnn_size)
+        self.emb2 = nn.Linear(opt.rnn_size, opt.rnn_size)
+
+    def forward(self, xt, fc_feats, att_feats, p_att_feats, state, att_masks=None):
+        # att_res_0 = self.att0(state[0][-1], att_feats, p_att_feats, att_masks)
+        h_0, state_0 = self.lstm0(torch.cat([xt, fc_feats], 1), [state[0][0:1], state[1][0:1]])
+        att_res_1 = self.att1(h_0, att_feats, p_att_feats, att_masks)
+        h_1, state_1 = self.lstm1(torch.cat([h_0, att_res_1], 1), [state[0][1:2], state[1][1:2]])
+        att_res_2 = self.att2(h_1 + self.emb2(att_res_1), att_feats, p_att_feats, att_masks)
+        h_2, state_2 = self.lstm2(torch.cat([h_1, att_res_2], 1), [state[0][2:3], state[1][2:3]])
+
+        return h_2, [torch.cat(_, 0) for _ in zip(state_0, state_1, state_2)]
+
+
+class DenseAttCore(nn.Module):
+    def __init__(self, opt, use_maxout=False):
+        super(DenseAttCore, self).__init__()
+        self.drop_prob_lm = opt.drop_prob_lm
+
+        # self.att0 = Attention(opt)
+        self.att1 = Attention(opt)
+        self.att2 = Attention(opt)
+
+        opt_input_encoding_size = opt.input_encoding_size
+        opt.input_encoding_size = opt.input_encoding_size + opt.rnn_size
+        self.lstm0 = LSTMCore(opt)  # att_feat + word_embedding
+        opt.input_encoding_size = opt.rnn_size * 2
+        self.lstm1 = LSTMCore(opt)
+        self.lstm2 = LSTMCore(opt)
+        opt.input_encoding_size = opt_input_encoding_size
+
+        # self.emb1 = nn.Linear(opt.rnn_size, opt.rnn_size)
+        self.emb2 = nn.Linear(opt.rnn_size, opt.rnn_size)
+
+        # fuse h_0 and h_1
+        self.fusion1 = nn.Sequential(nn.Linear(opt.rnn_size * 2, opt.rnn_size),
+                                     nn.ReLU(),
+                                     nn.Dropout(opt.drop_prob_lm))
+        # fuse h_0, h_1 and h_2
+        self.fusion2 = nn.Sequential(nn.Linear(opt.rnn_size * 3, opt.rnn_size),
+                                     nn.ReLU(),
+                                     nn.Dropout(opt.drop_prob_lm))
+
+    def forward(self, xt, fc_feats, att_feats, p_att_feats, state, att_masks=None):
+        # att_res_0 = self.att0(state[0][-1], att_feats, p_att_feats, att_masks)
+        h_0, state_0 = self.lstm0(torch.cat([xt, fc_feats], 1), [state[0][0:1], state[1][0:1]])
+        att_res_1 = self.att1(h_0, att_feats, p_att_feats, att_masks)
+        h_1, state_1 = self.lstm1(torch.cat([h_0, att_res_1], 1), [state[0][1:2], state[1][1:2]])
+        att_res_2 = self.att2(h_1 + self.emb2(att_res_1), att_feats, p_att_feats, att_masks)
+        h_2, state_2 = self.lstm2(torch.cat([self.fusion1(torch.cat([h_0, h_1], 1)), att_res_2], 1),
+                                  [state[0][2:3], state[1][2:3]])
+
+        return self.fusion2(torch.cat([h_0, h_1, h_2], 1)), [torch.cat(_, 0) for _ in zip(state_0, state_1, state_2)]
+
+
+class Attention(nn.Module):
+    def __init__(self, opt):
+        super(Attention, self).__init__()
+        self.rnn_size = opt.rnn_size
+        self.att_hid_size = opt.att_hid_size
+
+        self.h2att = nn.Linear(self.rnn_size, self.att_hid_size)
+        self.alpha_net = nn.Linear(self.att_hid_size, 1)
+
+        # Store attention weights for visualization
+        self.attn = None
+
+    def forward(self, h, att_feats, p_att_feats, att_masks=None):
+        # The p_att_feats here is already projected
+        att_size = att_feats.numel() // att_feats.size(0) // att_feats.size(-1)
+        att = p_att_feats.view(-1, att_size, self.att_hid_size)
+
+        att_h = self.h2att(h)  # batch * att_hid_size
+        att_h = att_h.unsqueeze(1).expand_as(att)  # batch * att_size * att_hid_size
+        dot = att + att_h  # batch * att_size * att_hid_size
+        dot = torch.tanh(dot)  # batch * att_size * att_hid_size
+        dot = dot.view(-1, self.att_hid_size)  # (batch * att_size) * att_hid_size
+        dot = self.alpha_net(dot)  # (batch * att_size) * 1
+        dot = dot.view(-1, att_size)  # batch * att_size
+
+        weight = F.softmax(dot, dim=1)  # batch * att_size
+        if att_masks is not None:
+            weight = weight * att_masks.view(-1, att_size).float()
+            weight = weight / weight.sum(1, keepdim=True)  # normalize to 1
+        att_feats_ = att_feats.view(-1, att_size, att_feats.size(-1))  # batch * att_size * att_feat_size
+        att_res = torch.bmm(weight.unsqueeze(1), att_feats_).squeeze(1)  # batch * att_feat_size
+
+        # Store attention weights for visualization
+        self.attn = weight
+
+        return att_res
+
+
+class Att2in2Core(nn.Module):
+    def __init__(self, opt):
+        super(Att2in2Core, self).__init__()
+        self.input_encoding_size = opt.input_encoding_size
+        # self.rnn_type = opt.rnn_type
+        self.rnn_size = opt.rnn_size
+        # self.num_layers = opt.num_layers
+        self.drop_prob_lm = opt.drop_prob_lm
+        self.fc_feat_size = opt.fc_feat_size
+        self.att_feat_size = opt.att_feat_size
+        self.att_hid_size = opt.att_hid_size
+
+        # Build a LSTM
+        self.a2c = nn.Linear(self.rnn_size, 2 * self.rnn_size)
+        self.i2h = nn.Linear(self.input_encoding_size, 5 * self.rnn_size)
+        self.h2h = nn.Linear(self.rnn_size, 5 * self.rnn_size)
+        self.dropout = nn.Dropout(self.drop_prob_lm)
+
+        self.attention = Attention(opt)
+
+    def forward(self, xt, fc_feats, att_feats, p_att_feats, state, att_masks=None):
+        att_res = self.attention(state[0][-1], att_feats, p_att_feats, att_masks)
+
+        all_input_sums = self.i2h(xt) + self.h2h(state[0][-1])
+        sigmoid_chunk = all_input_sums.narrow(1, 0, 3 * self.rnn_size)
+        sigmoid_chunk = torch.sigmoid(sigmoid_chunk)
+        in_gate = sigmoid_chunk.narrow(1, 0, self.rnn_size)
+        forget_gate = sigmoid_chunk.narrow(1, self.rnn_size, self.rnn_size)
+        out_gate = sigmoid_chunk.narrow(1, self.rnn_size * 2, self.rnn_size)
+
+        in_transform = all_input_sums.narrow(1, 3 * self.rnn_size, 2 * self.rnn_size) + \
+                       self.a2c(att_res)
+        in_transform = torch.max( \
+            in_transform.narrow(1, 0, self.rnn_size),
+            in_transform.narrow(1, self.rnn_size, self.rnn_size))
+        next_c = forget_gate * state[1][-1] + in_gate * in_transform
+        next_h = out_gate * torch.tanh(next_c)
+
+        output = self.dropout(next_h)
+        state = (next_h.unsqueeze(0), next_c.unsqueeze(0))
+        return output, state
+
+
+class Att2inCore(Att2in2Core):
+    def __init__(self, opt):
+        super(Att2inCore, self).__init__(opt)
+
+
+"""
+Note this is my attempt to replicate att2all model in self-critical paper.
+However, this is not a correct replication actually. Will fix it.
+"""
+
+
+class Att2all2Core(nn.Module):
+    def __init__(self, opt):
+        super(Att2all2Core, self).__init__()
+        self.input_encoding_size = opt.input_encoding_size
+        # self.rnn_type = opt.rnn_type
+        self.rnn_size = opt.rnn_size
+        # self.num_layers = opt.num_layers
+        self.drop_prob_lm = opt.drop_prob_lm
+        self.fc_feat_size = opt.fc_feat_size
+        self.att_feat_size = opt.att_feat_size
+        self.att_hid_size = opt.att_hid_size
+
+        # Build a LSTM
+        self.a2h = nn.Linear(self.rnn_size, 5 * self.rnn_size)
+        self.i2h = nn.Linear(self.input_encoding_size, 5 * self.rnn_size)
+        self.h2h = nn.Linear(self.rnn_size, 5 * self.rnn_size)
+        self.dropout = nn.Dropout(self.drop_prob_lm)
+
+        self.attention = Attention(opt)
+
+    def forward(self, xt, fc_feats, att_feats, p_att_feats, state, att_masks=None):
+        att_res = self.attention(state[0][-1], att_feats, p_att_feats, att_masks)
+
+        all_input_sums = self.i2h(xt) + self.h2h(state[0][-1]) + self.a2h(att_res)
+        sigmoid_chunk = all_input_sums.narrow(1, 0, 3 * self.rnn_size)
+        sigmoid_chunk = torch.sigmoid(sigmoid_chunk)
+        in_gate = sigmoid_chunk.narrow(1, 0, self.rnn_size)
+        forget_gate = sigmoid_chunk.narrow(1, self.rnn_size, self.rnn_size)
+        out_gate = sigmoid_chunk.narrow(1, self.rnn_size * 2, self.rnn_size)
+
+        in_transform = all_input_sums.narrow(1, 3 * self.rnn_size, 2 * self.rnn_size)
+        in_transform = torch.max( \
+            in_transform.narrow(1, 0, self.rnn_size),
+            in_transform.narrow(1, self.rnn_size, self.rnn_size))
+        next_c = forget_gate * state[1][-1] + in_gate * in_transform
+        next_h = out_gate * torch.tanh(next_c)
+
+        output = self.dropout(next_h)
+        state = (next_h.unsqueeze(0), next_c.unsqueeze(0))
+        return output, state
+
+
+class AdaAttModel(AttModel):
+    def __init__(self, opt):
+        super(AdaAttModel, self).__init__(opt)
+        self.core = AdaAttCore(opt)
+
+
+# AdaAtt with maxout lstm
+class AdaAttMOModel(AttModel):
+    def __init__(self, opt):
+        super(AdaAttMOModel, self).__init__(opt)
+        self.core = AdaAttCore(opt, True)
+
+
+class Att2in2Model(AttModel):
+    def __init__(self, opt):
+        super(Att2in2Model, self).__init__(opt)
+        self.core = Att2in2Core(opt)
+
+
+class Att2all2Model(AttModel):
+    def __init__(self, opt):
+        super(Att2all2Model, self).__init__(opt)
+        self.core = Att2all2Core(opt)
+
+
+class TopDownModel(AttModel):
+    def __init__(self, opt):
+        super(TopDownModel, self).__init__(opt)
+        self.num_layers = 2
+        self.core = TopDownCore(opt)
+
+
+class StackAttModel(AttModel):
+    def __init__(self, opt):
+        super(StackAttModel, self).__init__(opt)
+        self.num_layers = 3
+        self.core = StackAttCore(opt)
+
+
+class DenseAttModel(AttModel):
+    def __init__(self, opt):
+        super(DenseAttModel, self).__init__(opt)
+        self.num_layers = 3
+        self.core = DenseAttCore(opt)
+
+
+class Att2inModel(AttModel):
+    def __init__(self, opt):
+        super(Att2inModel, self).__init__(opt)
+        self.core = Att2inCore(opt)
+        self.init_weights()
+
+    def init_weights(self):
+        initrange = 0.1
+        self.logit.bias.data.fill_(0)
+        self.logit.weight.data.uniform_(-initrange, initrange)
+
+
+class NewFCModel(AttModel):
+    def __init__(self, opt):
+        super(NewFCModel, self).__init__(opt)
+        self.fc_embed = nn.Linear(self.fc_feat_size, self.input_encoding_size)
+        self.embed = nn.Embedding(self.vocab_size + 1, self.input_encoding_size)
+        self._core = LSTMCore(opt)
+
+    def core(self, xt, fc_feats, att_feats, p_att_feats, state, att_masks):
+        # Step 0, feed the input image
+        # if (self.training and state[0].is_leaf) or \
+        #     (not self.training and state[0].sum() == 0):
+        #     _, state = self._core(fc_feats, state)
+        # three cases
+        # normal mle training
+        # Sample
+        # beam search (diverse beam search)
+        # fixed captioning module.
+        # is_first_step = (state[0]==0).all(2).all(0)
+        # if is_first_step.all():
+        #     _, state = self._core(fc_feats, state)
+        # elif is_first_step.any():
+        #     # This is mostly for diverse beam search I think
+        #     new_state = torch.zeros_like(state)
+        #     new_state[~is_first_step] = state[~is_first_step]
+        #     _, state = self._core(fc_feats, state)
+        #     new_state[is_first_step] = state[is_first_step]
+        #     state = new_state
+        if (state[0] == 0).all():
+            # Let's forget about diverse beam search first
+            _, state = self._core(fc_feats, state)
+        return self._core(xt, state)
+
+    def _prepare_feature(self, fc_feats, att_feats, att_masks):
+        fc_feats = self.fc_embed(fc_feats)
+
+        return fc_feats, None, None, None
+
+
+class LMModel(AttModel):
+    def __init__(self, opt):
+        super(LMModel, self).__init__(opt)
+        delattr(self, 'fc_embed')
+        self.fc_embed = lambda x: x.new_zeros(x.shape[0], self.input_encoding_size)
+        self.embed = nn.Embedding(self.vocab_size + 1, self.input_encoding_size)
+        self._core = LSTMCore(opt)
+
+
+    def core(self, xt, fc_feats, att_feats, p_att_feats, state, att_masks):
+        if (state[0] == 0).all():
+            # Let's forget about diverse beam search first
+            _, state = self._core(fc_feats, state)
+        return self._core(xt, state)
+
+    def _prepare_feature(self, fc_feats, att_feats, att_masks):
+        fc_feats = self.fc_embed(fc_feats)
+
+        return fc_feats, None, None, None
