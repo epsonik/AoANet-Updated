@@ -9,6 +9,7 @@ from __future__ import print_function
 
 import argparse
 import os
+import shutil
 import torch
 import numpy as np
 from PIL import Image
@@ -157,12 +158,21 @@ def main(opt):
             # Determine attention size from features
             att_size = att_feats.size(1)
 
+            # Create a subdirectory for this image based on its filename (without extension)
+            image_basename = os.path.splitext(os.path.basename(actual_image_path))[0]
+            image_output_dir = os.path.join(opt.output_dir, image_basename)
+            os.makedirs(image_output_dir, exist_ok=True)
+
+            # Copy the original image to the subdirectory
+            original_image_dest = os.path.join(image_output_dir, 'original.jpg')
+            shutil.copy2(actual_image_path, original_image_dest)
+
             # Create visualizations
             vis_paths = vis_utils.visualize_attention_for_sequence(
                 actual_image_path,
                 attention_weights,
                 words,
-                output_dir=opt.output_dir,
+                output_dir=image_output_dir,
                 att_size=att_size
             )
 

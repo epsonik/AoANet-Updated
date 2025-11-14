@@ -48,7 +48,7 @@ Visualize the attention weights to understand which parts of the image the model
 $ python visualize.py --model log/log_aoanet_rl/model.pth --infos_path log/log_aoanet_rl/infos_aoanet.pkl --image_folder path/to/images --num_images 5
 ```
 
-This generates overlay-style heatmap visualizations showing attention for each word in the generated caption. Output format: `{index}_{word}.png` with jet colormap overlays. See [VISUALIZATION.md](VISUALIZATION.md) for detailed documentation.
+This generates overlay-style heatmap visualizations showing attention for each word in the generated caption. For each input image, a subdirectory is created (named after the image file) containing all heatmaps for that image. Output format: `{output_dir}/{image_name}/{index}_{word}.png`. See [VISUALIZATION.md](VISUALIZATION.md) for detailed documentation.
 
 ### Performance
 You will get the scores close to below after training under xe loss for 25 epochs:

@@ -6,6 +6,7 @@ import numpy as np
 import torch
 from PIL import Image
 import os
+import shutil
 import matplotlib.pyplot as plt
 
 import vis_utils
@@ -94,18 +95,27 @@ def main():
     print(f"Attention regions per word: {len(patterns[0])}")
     print()
     
+    # Create a subdirectory for this image based on its filename (without extension)
+    image_basename = os.path.splitext(os.path.basename(sample_image))[0]
+    image_output_dir = os.path.join(output_dir, image_basename)
+    os.makedirs(image_output_dir, exist_ok=True)
+    
+    # Copy the original image to the subdirectory
+    original_image_dest = os.path.join(image_output_dir, 'original.jpg')
+    shutil.copy2(sample_image, original_image_dest)
+    
     # Create visualizations
     print("Generating visualizations...")
     vis_paths = vis_utils.visualize_attention_for_sequence(
         sample_image,
         attention_weights,
         words,
-        output_dir=output_dir,
+        output_dir=image_output_dir,
         att_size=49
     )
     
     print(f"\nGenerated {len(vis_paths)} visualization(s)")
-    print(f"Output directory: {output_dir}")
+    print(f"Output directory: {image_output_dir}")
     print()
     
     # List generated files
@@ -113,7 +123,7 @@ def main():
     for path in vis_paths:
         print(f"  - {os.path.basename(path)}")
     
-    summary_path = os.path.join(output_dir, 'COCO_test2014_000000000027_summary.png')
+    summary_path = os.path.join(image_output_dir, 'COCO_test2014_000000000027_summary.png')
     if os.path.exists(summary_path):
         print(f"  - {os.path.basename(summary_path)}")
     

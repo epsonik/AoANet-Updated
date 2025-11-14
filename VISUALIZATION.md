@@ -68,11 +68,17 @@ python visualize.py \
 
 ## Output
 
-For each processed image, the script generates:
+For each processed image, the script creates a subdirectory within the output folder named after the image file (without extension). All visualizations for that image are saved in this subdirectory.
 
-1. **Original Image**: The input image saved for reference
+**Directory Structure**: `{output_dir}/{image_name}/`
+
+For example, if the input image is `example_image.jpg`, all outputs will be saved in `{output_dir}/example_image/`.
+
+Within each image subdirectory, the script generates:
+
+1. **Original Image**: A copy of the input image saved for reference
    
-   Format: `original.png`
+   Format: `original.jpg`
 
 2. **Individual Word Visualizations**: One image per word showing attention overlay on the image
    - Attention heatmap overlaid directly on the image
@@ -84,6 +90,30 @@ For each processed image, the script generates:
 3. **Summary Visualization**: A horizontal grid showing the original image and attention for all words
 
    Format: `{image_name}_summary.png`
+
+### Example Output Structure
+
+When processing two images `cat.jpg` and `dog.jpg` with output directory `vis/attention`:
+
+```
+vis/attention/
+├── cat/
+│   ├── original.jpg
+│   ├── 0_a.png
+│   ├── 1_cat.png
+│   ├── 2_sitting.png
+│   ├── 3_on.png
+│   ├── 4_couch.png
+│   └── cat_summary.png
+└── dog/
+    ├── original.jpg
+    ├── 0_a.png
+    ├── 1_dog.png
+    ├── 2_playing.png
+    └── dog_summary.png
+```
+
+This organization makes it easy to find all visualizations related to a specific input image.
 
 ## Understanding the Visualizations
 
