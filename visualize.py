@@ -1,208 +1,149 @@
 """
-Script to visualize attention weights for image captioning.
-This script loads a trained model, generates captions for images,
-and creates attention heatmap visualizations.
+Skrypt do wizualizacji wag atencji, w tym dla tokenu <eos>.
+Użycie:
+python visualize.py --model_path /path/to/your/model.pth --image_path /path/to/your/image.jpg --infos_path /path/to/infos.pkl
 """
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
+import torch
+import misc.utils as utils
 import argparse
 import os
-import torch
 import numpy as np
 from PIL import Image
-
-import opts
-import models
-from dataloaderraw import DataLoaderRaw
-import misc.utils as utils
-import vis_utils
+import matplotlib.pyplot as plt
+from torchvision import transforms as trn
 
 
 def main(opt):
-    # Load model and info
-    print(f"Loading model from: {opt.model}")
+    # --- Ładowanie modelu i informacji ---
+    if not os.path.isfile(opt.model_path):
+        raise FileNotFoundError(f"Model file not found: {opt.model_path}")
+    if not os.path.isfile(opt.infos_path):
+        raise FileNotFoundError(f"Infos file not found: {opt.infos_path}")
+
+    # Załaduj infos, które zawiera słownik (vocab) i opcje modelu
     with open(opt.infos_path, 'rb') as f:
         infos = utils.pickle_load(f)
 
-    # Override and collect parameters
-    replace = ['input_fc_dir', 'input_att_dir', 'input_box_dir', 'input_label_h5',
-               'input_json', 'batch_size', 'id']
-    ignore = ['start_from']
+    # Zastąp opcje z infos opcjami z linii komend, jeśli podano
+    for k, v in vars(opt).items():
+        if v is not None:
+            vars(infos['opt'])[k] = v
 
-    for k in vars(infos['opt']).keys():
-        if k in replace:
-            setattr(opt, k, getattr(opt, k) or getattr(infos['opt'], k, ''))
-        elif k not in ignore:
-            if k not in vars(opt):
-                vars(opt).update({k: vars(infos['opt'])[k]})
+    vocab = infos['vocab']
+    model_opt = infos['opt']
 
-    vocab = infos['vocab']  # ix -> word mapping
+    # Załaduj model
+    model = utils.setup(model_opt)
+    model.load_state_dict(torch.load(opt.model_path, map_location=torch.device('cpu')))
+    model.eval()  # Ustaw model w tryb ewaluacji
 
-    # Setup the model
-    opt.vocab = vocab
-    model = models.setup(opt)
-    del opt.vocab
+    # --- Przygotowanie obrazu ---
+    if not os.path.isfile(opt.image_path):
+        raise FileNotFoundError(f"Image file not found: {opt.image_path}")
 
-    # Manually set special indices on the model
-    model.bos_idx = getattr(infos['opt'], 'bos_idx', 0)
-    model.eos_idx = getattr(infos['opt'], 'eos_idx', 0)
-    model.pad_idx = getattr(infos['opt'], 'pad_idx', 0)
+    # Transformacje obrazu muszą pasować do tych używanych podczas treningu
+    # Zazwyczaj jest to resize, a następnie normalizacja
+    preprocess = trn.Compose([
+        trn.Resize((model_opt.image_crop_size, model_opt.image_crop_size)),
+        trn.ToTensor(),
+        trn.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+    ])
 
-    model.load_state_dict(torch.load(opt.model, map_location=torch.device('cpu')))
-    model.cuda()
-    model.eval()
+    img_pil = Image.open(opt.image_path).convert('RGB')
+    img_tensor = preprocess(img_pil).unsqueeze(0)  # Dodaj wymiar batcha
 
-    print("Model loaded successfully")
-    print(f"Vocabulary size: {len(vocab)}")
+    # --- Generowanie opisu i wag atencji ---
+    with torch.no_grad():
+        # Wywołaj sample z nową opcją `return_att_weights`
+        # Model powinien zwrócić 3 wartości: seq, seqLogprobs, att_weights
+        seq, _, att_weights = model(img_tensor, None, opt={'beam_size': 1, 'return_att_weights': True})
 
-    # Create data loader for the image
-    if opt.image_folder:
-        loader = DataLoaderRaw({
-            'folder_path': opt.image_folder,
-            'coco_json': opt.coco_json,
-            'batch_size': 1,
-            'cnn_model': opt.cnn_model
-        })
-        loader.ix_to_word = vocab
-    else:
-        raise ValueError("Must specify --image_folder")
+    # --- Wizualizacja ---
+    # Zdekoduj sekwencję na słowa
+    sents = utils.decode_sequence(vocab, seq)
+    sent = sents[0]
+    words = sent.split(' ')
 
-    # Create output directory
-    os.makedirs(opt.output_dir, exist_ok=True)
+    # ZNAJĎ INDEKS <eos> i utnij słowa do tego miejsca
+    # seq jest tensorem [1, seq_length]
+    try:
+        eos_index = (seq[0] == 0).nonzero(as_tuple=False)[0][0].item()
+        words = words[:eos_index]
+    except IndexError:
+        # <eos> nie zostało wygenerowane, użyj wszystkich słów
+        eos_index = len(words)
 
-    # Process images
-    loader.reset_iterator('test')
-    num_processed = 0
+    # RĘCZNIE DODAJ TOKEN <eos> do listy słów
+    words.append('<eos>')
 
-    print(f"\nProcessing images from: {opt.image_folder}")
-    print(f"Saving visualizations to: {opt.output_dir}")
-    print(f"Number of images to process: {opt.num_images if opt.num_images > 0 else 'all'}\n")
+    # Pobierz wagi atencji dla pierwszego (i jedynego) obrazu
+    # Kształt: (1, seq_length, num_regions) -> (seq_length, num_regions)
+    att_weights = att_weights[0]
 
-    while True:
-        # Get batch
-        data = loader.get_batch('test')
+    # Ogranicz wagi do wygenerowanej długości + 1 (dla <eos>)
+    att_weights = att_weights[:eos_index + 1]
 
-        def to_cuda_tensor(x):
-            if x is None:
-                return None
-            if isinstance(x, torch.Tensor):
-                return x.cuda()
-            return torch.from_numpy(x).float().cuda()
+    # Sprawdzenie spójności
+    print(f"Wygenerowane zdanie: '{' '.join(words[:-1])}'")
+    print(f"Słowa do wizualizacji ({len(words)}): {words}")
+    print(f"Liczba map atencji: {att_weights.size(0)}")
 
-        fc_feats = to_cuda_tensor(data['fc_feats'][0:1])
-        att_feats = to_cuda_tensor(data['att_feats'][0:1])
-        att_masks = to_cuda_tensor(data.get('att_masks')[0:1]) if data.get('att_masks') is not None else None
+    if len(words) != att_weights.size(0):
+        print("OSTRZEŻENIE: Liczba słów nie zgadza się z liczbą map atencji. Wizualizacja może być niekompletna.")
+        # Ogranicz do mniejszej z dwóch wartości
+        min_len = min(len(words), att_weights.size(0))
+        words = words[:min_len]
+        att_weights = att_weights[:min_len]
 
-        # Get image info
-        image_id = data['infos'][0]['id']
-        image_path = data['infos'][0]['file_path']
+    # Rozmiar siatki atencji (np. 14x14 = 196)
+    # W modelach AoA, atencja jest nad regionami + 1 "fake region", więc odejmujemy 1
+    num_regions = att_weights.size(1)
+    # Sprawdź, czy atencja jest nad siatką, czy listą regionów
+    att_grid_size = int(np.sqrt(num_regions - 1))  # np. sqrt(196) = 14
+    if (att_grid_size * att_grid_size) != (num_regions - 1):
+        raise ValueError(f"Nie można przekształcić atencji o rozmiarze {num_regions - 1} na kwadratową siatkę.")
 
-        print(f"Processing image {num_processed + 1}: {image_path}")
+    # Stwórz katalog na wyniki, jeśli nie istnieje
+    output_dir = "attention_viz"
+    os.makedirs(output_dir, exist_ok=True)
+    print(f"Zapisywanie wizualizacji w katalogu: {output_dir}")
 
-        # Generate caption and capture attention
-        with torch.no_grad():
-            seq, attention_weights = vis_utils.capture_attention_weights(
-                model, fc_feats, att_feats, att_masks,
-                opt={'sample_method': opt.sample_method,
-                     'beam_size': opt.beam_size,
-                     'temperature': opt.temperature}
-            )
+    # Pętla wizualizująca
+    for i in range(len(words)):
+        word = words[i]
 
-        # Decode sequence to words
-        sents = utils.decode_sequence(vocab, seq)
-        caption = sents[0]
+        # Pobierz mapę atencji bez "fake region" i przekształć na siatkę 2D
+        attention_map = att_weights[i][1:].view(att_grid_size, att_grid_size).numpy()
 
-        print(f"Generated caption: {caption}")
+        # Utwórz figurę
+        fig, ax = plt.subplots()
+        ax.imshow(img_pil)
 
-        # If no attention was captured (e.g., for multi-headed attention during beam search),
-        # try extracting attention by re-running with the sequence
-        if len(attention_weights) == 0:
-            print("No attention captured during generation, extracting from sequence...")
-            attention_weights = vis_utils.get_attention_weights_from_sequence(
-                model, fc_feats, att_feats, att_masks, seq
-            )
+        # Nałóż mapę atencji
+        # Użyj `resize` z Pillow, aby poprawnie przeskalować mapę
+        alpha_img = Image.fromarray((attention_map / attention_map.max() * 255).astype(np.uint8))
+        alpha_img = alpha_img.resize(img_pil.size, Image.Resampling.LANCZOS)
+        ax.imshow(np.array(alpha_img), cmap='jet', alpha=0.5)
 
-        if len(attention_weights) > 0:
-            # Split caption into words
-            words = caption.split()
+        ax.set_title(f"Atencja dla słowa: '{word}'", fontsize=14)
+        ax.axis('off')
 
-            # Adjust attention_weights list to match words (handle potential mismatches)
-            min_len = min(len(attention_weights), len(words))
-            attention_weights = attention_weights[:min_len]
-            words = words[:min_len]
+        # Zapisz plik
+        filename = os.path.join(output_dir, f"{i:02d}_attention_{word.replace('<', '_').replace('>', '_')}.png")
+        plt.savefig(filename, bbox_inches='tight')
+        plt.close(fig)
+        print(f"Zapisano: {filename}")
 
-            print(f"Creating visualizations for {len(words)} words...")
-
-            # Get the actual image path
-            if opt.image_folder:
-                actual_image_path = image_path # DataloaderRaw returns the full path
-            else:
-                actual_image_path = image_path
-
-            # Check if image exists
-            if not os.path.exists(actual_image_path):
-                print(f"Warning: Image not found at {actual_image_path}")
-                # Try to find the image in the folder
-                possible_path = os.path.join(opt.image_folder, os.path.basename(image_path))
-                if os.path.exists(possible_path):
-                    actual_image_path = possible_path
-                    print(f"Found image at: {actual_image_path}")
-                else:
-                    print(f"Skipping visualization for this image")
-                    num_processed += 1
-                    continue
-
-            # Determine attention size from features
-            att_size = att_feats.size(1)
-
-            # Create visualizations
-            vis_paths = vis_utils.visualize_attention_for_sequence(
-                actual_image_path,
-                attention_weights,
-                words,
-                output_dir=opt.output_dir,
-                att_size=att_size
-            )
-
-            print(f"Created {len(vis_paths)} visualization(s)")
-        else:
-            print("Warning: Could not extract attention weights for this image")
-
-        num_processed += 1
-
-        print()  # Empty line for readability
-
-        # Check if we should stop
-        if opt.num_images > 0 and num_processed >= opt.num_images:
-            break
-
-        if data['bounds']['wrapped']:
-            break
-
-    print(f"\nProcessing complete! Processed {num_processed} image(s)")
-    print(f"Visualizations saved to: {opt.output_dir}")
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(description="Wizualizacja wag atencji modelu.")
+    parser.add_argument('--model_path', type=str, required=True, help='Ścieżka do zapisanego modelu (.pth).')
+    parser.add_argument('--infos_path', type=str, required=True, help='Ścieżka do pliku infos z treningu (.pkl).')
+    parser.add_argument('--image_path', type=str, required=True, help='Ścieżka do obrazu do analizy.')
 
-    # Model parameters
-    parser.add_argument('--model', type=str, required=True,
-                        help='path to model checkpoint (.pth file)')
-    parser.add_argument('--infos_path', type=str, required=True,
-                        help='path to infos file (.pkl file)')
-    parser.add_argument('--cnn_model', type=str, default='densenet201',
-                        help='CNN model for feature extraction (resnet101, resnet152, etc.)')
+    # Opcje, które można nadpisać
+    parser.add_argument('--image_crop_size', type=int, default=224, help='Rozmiar, do którego przycinany jest obraz.')
 
-
-    # Output parameters
-    parser.add_argument('--output_dir', type=str, default='vis/attention',
-                        help='directory to save attention visualizations')
-
-    opts.add_eval_options(parser)
-
-    opt = parser.parse_args()
-
-    # Run visualization
-    main(opt)
+    args = parser.parse_args()
+    main(args)
