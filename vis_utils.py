@@ -154,6 +154,10 @@ def visualize_attention_for_sequence(image_path, attention_weights, words, outpu
     Creates and saves a sequence of visualizations for each word in the caption.
     """
     img = Image.open(image_path).convert("RGB")
+    # --- POCZĄTEK ZMIANY ---
+    # Skalowanie obrazu do rozmiaru 336x336
+    img = img.resize([14 * 24, 14 * 24], Image.LANCZOS)
+    # --- KONIEC ZMIANY ---
     img_cv = np.array(img)
     img_cv = cv2.cvtColor(img_cv, cv2.COLOR_RGB2BGR)
 
@@ -177,9 +181,10 @@ def visualize_attention_for_sequence(image_path, attention_weights, words, outpu
         # The line to add the caption has been removed as requested.
 
         # Save the visualization with the word in the filename
-        filename = f"{os.path.basename(image_path).split('.')[0]}_step_{i+1}_{word}.png"
-        save_path = os.path.join(output_dir, filename)
-        vis_image.save(save_path)
-        vis_paths.append(save_path)
+        sanitized_word = "".join(c for c in word if c.isalnum() or c in (' ', '_')).rstrip()
+        filename = f"{i}_{sanitized_word}.png"
+        output_path = os.path.join(output_dir, filename)
+        vis_image.save(output_path)
+        vis_paths.append(output_path)
 
     return vis_paths
