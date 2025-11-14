@@ -76,9 +76,9 @@ For example, if the input image is `example_image.jpg`, all outputs will be save
 
 Within each image subdirectory, the script generates:
 
-1. **Original Image**: The input image saved for reference
+1. **Original Image**: A copy of the input image saved for reference
    
-   Format: `original.png`
+   Format: `original.jpg`
 
 2. **Individual Word Visualizations**: One image per word showing attention overlay on the image
    - Attention heatmap overlaid directly on the image
@@ -98,6 +98,7 @@ When processing two images `cat.jpg` and `dog.jpg` with output directory `vis/at
 ```
 vis/attention/
 ├── cat/
+│   ├── original.jpg
 │   ├── 0_a.png
 │   ├── 1_cat.png
 │   ├── 2_sitting.png
@@ -105,6 +106,7 @@ vis/attention/
 │   ├── 4_couch.png
 │   └── cat_summary.png
 └── dog/
+    ├── original.jpg
     ├── 0_a.png
     ├── 1_dog.png
     ├── 2_playing.png

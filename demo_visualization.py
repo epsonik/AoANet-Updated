@@ -6,6 +6,7 @@ import numpy as np
 import torch
 from PIL import Image
 import os
+import shutil
 import matplotlib.pyplot as plt
 
 import vis_utils
@@ -98,6 +99,10 @@ def main():
     image_basename = os.path.splitext(os.path.basename(sample_image))[0]
     image_output_dir = os.path.join(output_dir, image_basename)
     os.makedirs(image_output_dir, exist_ok=True)
+    
+    # Copy the original image to the subdirectory
+    original_image_dest = os.path.join(image_output_dir, 'original.jpg')
+    shutil.copy2(sample_image, original_image_dest)
     
     # Create visualizations
     print("Generating visualizations...")

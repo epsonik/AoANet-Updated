@@ -41,9 +41,16 @@ def test_demo_directory_structure():
         print(f"✗ No heatmap files found in subdirectory: {image_subdir}")
         return False
     
+    # Check that the original image is present
+    original_image = os.path.join(image_subdir, 'original.jpg')
+    if not os.path.exists(original_image):
+        print(f"✗ Original image not found in subdirectory: {original_image}")
+        return False
+    
     print(f"✓ Demo directory structure test passed")
     print(f"  Subdirectory created: {image_subdir}")
     print(f"  Found {len(heatmap_files)} heatmap files in subdirectory")
+    print(f"  Original image present: original.jpg")
     
     return True
 
