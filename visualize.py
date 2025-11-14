@@ -184,7 +184,6 @@ def main(opt):
     print(f"\nProcessing complete! Processed {num_processed} image(s)")
     print(f"Visualizations saved to: {opt.output_dir}")
 
-
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
 
