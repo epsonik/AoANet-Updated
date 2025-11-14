@@ -170,6 +170,10 @@ def visualize_attention_for_sequence(image_path, attention_weights, words, outpu
         # The attention is over the input tokens (text + image). We want the image part.
         # Shape is (query_len, key_len). e.g., (1, 197) where 196 is image regions
         vis_attention = attention[0, -att_size:]
+        
+        # Convert to numpy if it's a tensor
+        if isinstance(vis_attention, torch.Tensor):
+            vis_attention = vis_attention.cpu().numpy()
 
         # Create the heatmap
         attention_map = resize_attention_to_image(vis_attention, (img.width, img.height), grid_size)
