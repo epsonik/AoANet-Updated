@@ -23,7 +23,6 @@ import opts
 import models
 from dataloaderraw import DataLoaderRaw
 import sys
-import misc.utils as utils
 import vis_utils
 
 # Optional imports for COCO evaluation
