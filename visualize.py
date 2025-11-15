@@ -22,6 +22,8 @@ import tempfile
 import opts
 import models
 from dataloaderraw import DataLoaderRaw
+import sys
+sys.path.append("./misc")
 import misc.utils as utils
 import vis_utils
 
