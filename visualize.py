@@ -1,7 +1,7 @@
 """
-Script to visualize attention weights for image captioning.
+Script to visualize attention weights and evaluate generated captions for image captioning.
 This script loads a trained model, generates captions for images,
-and creates attention heatmap visualizations.
+creates attention heatmap visualizations, and calculates evaluation scores (BLEU, METEOR, etc.).
 """
 from __future__ import absolute_import
 from __future__ import division
@@ -13,12 +13,22 @@ import shutil
 import torch
 import numpy as np
 from PIL import Image
+import json
 
 import opts
 import models
 from dataloaderraw import DataLoaderRaw
 import misc.utils as utils
 import vis_utils
+
+# Imports for COCO evaluation
+try:
+    from pycocotools.coco import COCO
+    from pycocoevalcap.eval import COCOevalCap
+except ImportError:
+    print("COCO evaluation libraries not found. Please install pycocotools and pycocoevalcap.")
+    COCO = None
+    COCOevalCap = None
 
 
 def main(opt):
@@ -70,12 +80,23 @@ def main(opt):
     else:
         raise ValueError("Must specify --image_folder")
 
+    # Load reference captions for evaluation
+    coco_eval = None
+    if opt.reference_captions_path and COCO:
+        print(f"Loading reference captions from: {opt.reference_captions_path}")
+        coco = COCO(opt.reference_captions_path)
+    else:
+        coco = None
+        print("Warning: Reference captions path not provided or COCO libraries not found. Skipping evaluation.")
+
+
     # Create output directory
     os.makedirs(opt.output_dir, exist_ok=True)
 
     # Process images
     loader.reset_iterator('test')
     num_processed = 0
+    predictions = []
 
     print(f"\nProcessing images from: {opt.image_folder}")
     print(f"Saving visualizations to: {opt.output_dir}")
@@ -100,7 +121,7 @@ def main(opt):
         image_id = data['infos'][0]['id']
         image_path = data['infos'][0]['file_path']
 
-        print(f"Processing image {num_processed + 1}: {image_path}")
+        print(f"Processing image {num_processed + 1} (ID: {image_id}): {image_path}")
 
         # Generate caption and capture attention
         with torch.no_grad():
@@ -116,6 +137,10 @@ def main(opt):
         caption = sents[0]
 
         print(f"Generated caption: {caption}")
+
+        # Store prediction for evaluation
+        if coco:
+            predictions.append({'image_id': image_id, 'caption': caption})
 
         # If no attention was captured (e.g., for multi-headed attention during beam search),
         # try extracting attention by re-running with the sequence
@@ -137,10 +162,7 @@ def main(opt):
             print(f"Creating visualizations for {len(words)} words...")
 
             # Get the actual image path
-            if opt.image_folder:
-                actual_image_path = image_path # DataloaderRaw returns the full path
-            else:
-                actual_image_path = image_path
+            actual_image_path = image_path
 
             # Check if image exists
             if not os.path.exists(actual_image_path):
@@ -181,7 +203,6 @@ def main(opt):
             print("Warning: Could not extract attention weights for this image")
 
         num_processed += 1
-
         print()  # Empty line for readability
 
         # Check if we should stop
@@ -193,6 +214,21 @@ def main(opt):
 
     print(f"\nProcessing complete! Processed {num_processed} image(s)")
     print(f"Visualizations saved to: {opt.output_dir}")
+
+    # Run COCO evaluation
+    if coco and predictions:
+        print("\nStarting evaluation...")
+        coco_res = coco.loadRes(predictions)
+        coco_eval = COCOevalCap(coco, coco_res)
+
+        # Evaluate on the processed images
+        coco_eval.params['image_id'] = [p['image_id'] for p in predictions]
+        coco_eval.evaluate()
+
+        print("\nEvaluation results:")
+        for metric, score in coco_eval.eval.items():
+            print(f'{metric}: {score:.4f}')
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -209,9 +245,13 @@ if __name__ == '__main__':
     parser.add_argument('--output_dir', type=str, default='vis/attention',
                         help='directory to save attention visualizations')
 
+    # Evaluation parameters
+    parser.add_argument('--reference_captions_path', type=str, default='captions_val2014.json',
+                        help='path to COCO reference captions file for evaluation (e.g., captions_val2014.json)')
+
     opts.add_eval_options(parser)
 
     opt = parser.parse_args()
 
-    # Run visualization
+    # Run visualization and evaluation
     main(opt)
