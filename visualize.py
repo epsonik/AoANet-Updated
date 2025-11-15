@@ -13,12 +13,144 @@ import shutil
 import torch
 import numpy as np
 from PIL import Image
+import csv
+import sys
+import json
 
 import opts
 import models
 from dataloaderraw import DataLoaderRaw
 import misc.utils as utils
 import vis_utils
+
+# Add coco-caption to the path for evaluation
+sys.path.append("coco-caption")
+
+
+def calculate_metrics_for_image(image_id, predicted_caption, coco_annotations):
+    """
+    Calculate BLEU, METEOR, CIDEr, and ROUGE_L metrics for a single image.
+    
+    Args:
+        image_id: COCO image ID
+        predicted_caption: Generated caption string
+        coco_annotations: Path to COCO annotations JSON file
+        
+    Returns:
+        Dictionary containing all metrics
+    """
+    try:
+        from pycocotools.coco import COCO
+        from pycocoevalcap.eval import COCOEvalCap
+    except ImportError:
+        print("Warning: pycocoevalcap not available. Metrics will not be calculated.")
+        return None
+    
+    # Load COCO annotations
+    coco = COCO(coco_annotations)
+    
+    # Check if image_id is valid
+    if image_id not in coco.getImgIds():
+        print(f"Warning: Image ID {image_id} not found in COCO annotations")
+        return None
+    
+    # Create temporary result in COCO format
+    result = [{'image_id': image_id, 'caption': predicted_caption}]
+    
+    # Create a temporary file for results (required by COCO API)
+    import tempfile
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+        json.dump(result, f)
+        temp_file = f.name
+    
+    try:
+        # Load results
+        cocoRes = coco.loadRes(temp_file)
+        
+        # Evaluate
+        cocoEval = COCOEvalCap(coco, cocoRes)
+        cocoEval.params['image_id'] = [image_id]
+        cocoEval.evaluate()
+        
+        # Get metrics for this specific image
+        metrics = {}
+        if image_id in cocoEval.imgToEval:
+            img_metrics = cocoEval.imgToEval[image_id]
+            metrics['BLEU_1'] = img_metrics.get('Bleu_1', 0.0)
+            metrics['BLEU_2'] = img_metrics.get('Bleu_2', 0.0)
+            metrics['BLEU_3'] = img_metrics.get('Bleu_3', 0.0)
+            metrics['BLEU_4'] = img_metrics.get('Bleu_4', 0.0)
+            metrics['METEOR'] = img_metrics.get('METEOR', 0.0)
+            metrics['CIDEr'] = img_metrics.get('CIDEr', 0.0)
+            metrics['ROUGE_L'] = img_metrics.get('ROUGE_L', 0.0)
+        
+        return metrics
+    finally:
+        # Clean up temporary file
+        if os.path.exists(temp_file):
+            os.remove(temp_file)
+
+
+def extract_image_id_from_filename(filename):
+    """
+    Extract COCO image ID from filename.
+    Expected format: COCO_val2014_000000391895.jpg -> 391895
+    """
+    basename = os.path.basename(filename)
+    # Try to extract ID from COCO format
+    if 'COCO' in basename:
+        parts = basename.split('_')
+        if len(parts) >= 3:
+            # Get the numeric part (remove .jpg or other extension)
+            id_str = parts[-1].split('.')[0]
+            try:
+                return int(id_str)
+            except ValueError:
+                pass
+    
+    # If not in COCO format, try to parse the entire basename as a number
+    try:
+        return int(basename.split('.')[0])
+    except ValueError:
+        pass
+    
+    return None
+
+
+def save_metrics_to_csv(csv_file, image_id, predicted_caption, metrics):
+    """
+    Save metrics to CSV file.
+    
+    Args:
+        csv_file: Path to CSV file
+        image_id: Image ID
+        predicted_caption: Generated caption
+        metrics: Dictionary of metrics
+    """
+    file_exists = os.path.isfile(csv_file)
+    
+    with open(csv_file, 'a', newline='', encoding='utf-8') as f:
+        fieldnames = ['image_id', 'predicted_caption', 'BLEU_1', 'BLEU_2', 
+                     'BLEU_3', 'BLEU_4', 'METEOR', 'CIDEr', 'ROUGE_L']
+        writer = csv.DictWriter(f, fieldnames=fieldnames)
+        
+        # Write header if file is new
+        if not file_exists:
+            writer.writeheader()
+        
+        # Write metrics
+        row = {
+            'image_id': image_id,
+            'predicted_caption': predicted_caption,
+            'BLEU_1': metrics.get('BLEU_1', 0.0),
+            'BLEU_2': metrics.get('BLEU_2', 0.0),
+            'BLEU_3': metrics.get('BLEU_3', 0.0),
+            'BLEU_4': metrics.get('BLEU_4', 0.0),
+            'METEOR': metrics.get('METEOR', 0.0),
+            'CIDEr': metrics.get('CIDEr', 0.0),
+            'ROUGE_L': metrics.get('ROUGE_L', 0.0)
+        }
+        writer.writerow(row)
 
 
 def main(opt):
@@ -117,6 +249,40 @@ def main(opt):
 
         print(f"Generated caption: {caption}")
 
+        # Calculate metrics if reference annotations are provided
+        if opt.coco_annotations and os.path.exists(opt.coco_annotations):
+            # Extract numeric image ID from the image_id or filename
+            numeric_image_id = None
+            
+            # Try to use image_id directly if it's numeric
+            try:
+                numeric_image_id = int(image_id)
+            except (ValueError, TypeError):
+                # Try to extract from filename
+                numeric_image_id = extract_image_id_from_filename(image_path)
+            
+            if numeric_image_id is not None:
+                print(f"Calculating metrics for image ID: {numeric_image_id}")
+                metrics = calculate_metrics_for_image(
+                    numeric_image_id, caption, opt.coco_annotations
+                )
+                
+                if metrics is not None:
+                    print(f"  BLEU-1: {metrics['BLEU_1']:.4f}, "
+                          f"BLEU-2: {metrics['BLEU_2']:.4f}, "
+                          f"BLEU-3: {metrics['BLEU_3']:.4f}, "
+                          f"BLEU-4: {metrics['BLEU_4']:.4f}")
+                    print(f"  METEOR: {metrics['METEOR']:.4f}, "
+                          f"CIDEr: {metrics['CIDEr']:.4f}, "
+                          f"ROUGE_L: {metrics['ROUGE_L']:.4f}")
+                    
+                    # Save to CSV
+                    csv_path = os.path.join(opt.output_dir, 'evaluation_metrics.csv')
+                    save_metrics_to_csv(csv_path, numeric_image_id, caption, metrics)
+                    print(f"  Metrics saved to: {csv_path}")
+            else:
+                print(f"Warning: Could not extract numeric image ID from {image_id} or {image_path}")
+
         # If no attention was captured (e.g., for multi-headed attention during beam search),
         # try extracting attention by re-running with the sequence
         if len(attention_weights) == 0:
@@ -208,6 +374,10 @@ if __name__ == '__main__':
     # Output parameters
     parser.add_argument('--output_dir', type=str, default='vis/attention',
                         help='directory to save attention visualizations')
+    
+    # Evaluation parameters
+    parser.add_argument('--coco_annotations', type=str, default='coco-caption/annotations/captions_val2014.json',
+                        help='path to COCO annotations file for metric calculation')
 
     opts.add_eval_options(parser)
 

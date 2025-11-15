@@ -46,6 +46,7 @@ python visualize.py \
 - `--temperature`: Temperature for sampling (default: 1.0)
 - `--cnn_model`: CNN model for features (default: resnet101)
 - `--coco_json`: Optional COCO JSON file for image metadata
+- `--coco_annotations`: Path to COCO annotations for metric calculation (default: `coco-caption/annotations/captions_val2014.json`)
 
 ### Example
 
@@ -91,6 +92,10 @@ Within each image subdirectory, the script generates:
 
    Format: `{image_name}_summary.png`
 
+4. **Evaluation Metrics** (if COCO annotations are provided): CSV file containing caption quality metrics
+
+   Format: `evaluation_metrics.csv` (in the output directory)
+
 ### Example Output Structure
 
 When processing two images `cat.jpg` and `dog.jpg` with output directory `vis/attention`:
@@ -127,6 +132,90 @@ For a caption "A cat sitting on a couch":
 - Word "cat": High attention (red) on the cat region
 - Word "couch": High attention (red) on the couch region
 - Word "sitting": Attention distributed between cat and couch
+
+## Evaluation Metrics
+
+When processing images from the COCO dataset, the script can automatically calculate standard image captioning metrics for each generated caption. This feature helps evaluate the quality of the model's predictions.
+
+### Metrics Calculated
+
+For each image, the following metrics are computed by comparing the predicted caption against ground-truth reference captions:
+
+- **BLEU-1, BLEU-2, BLEU-3, BLEU-4**: N-gram overlap metrics (higher is better, range 0-1)
+- **METEOR**: Metric considering synonyms and stemming (higher is better, range 0-1)
+- **CIDEr**: Consensus-based metric weighted by TF-IDF (higher is better, typically 0-10)
+- **ROUGE_L**: Longest common subsequence based metric (higher is better, range 0-1)
+
+### Using Metric Calculation
+
+To enable metric calculation, ensure the COCO annotations file is available:
+
+```bash
+python visualize.py \
+    --model path/to/model.pth \
+    --infos_path path/to/infos.pkl \
+    --image_folder path/to/coco/images \
+    --coco_annotations coco-caption/annotations/captions_val2014.json \
+    --output_dir vis/attention \
+    --num_images 5
+```
+
+The script will:
+1. Extract the COCO image ID from the filename (e.g., `COCO_val2014_000000391895.jpg` → 391895)
+2. Load reference captions for that image from the annotations
+3. Calculate metrics comparing predicted vs. reference captions
+4. Print metrics to console for each image
+5. Save all metrics to `evaluation_metrics.csv` in the output directory
+
+### CSV Output Format
+
+The `evaluation_metrics.csv` file contains:
+- `image_id`: COCO image ID
+- `predicted_caption`: Generated caption by the model
+- `BLEU_1`, `BLEU_2`, `BLEU_3`, `BLEU_4`: BLEU scores
+- `METEOR`: METEOR score
+- `CIDEr`: CIDEr score
+- `ROUGE_L`: ROUGE_L score
+
+Example CSV content:
+```csv
+image_id,predicted_caption,BLEU_1,BLEU_2,BLEU_3,BLEU_4,METEOR,CIDEr,ROUGE_L
+391895,a bicycle with a clock as the front wheel,0.8571,0.7143,0.5714,0.4286,0.3456,1.2345,0.6789
+203564,a dog sitting on a couch,0.9000,0.7500,0.6000,0.4500,0.4123,1.5678,0.7234
+```
+
+### Requirements for Metric Calculation
+
+The metric calculation feature requires:
+- `pycocoevalcap` library (included in the coco-caption submodule)
+- `pycocotools` (included in the coco-caption submodule)
+- COCO annotations file (captions_val2014.json)
+- Images must be from the COCO dataset with standard naming convention
+
+If any of these requirements are not met, the script will skip metric calculation and only generate visualizations.
+
+### Example with Metrics
+
+```bash
+# Process COCO validation images with metric calculation
+python visualize.py \
+    --model log/log_aoanet_rl/model.pth \
+    --infos_path log/log_aoanet_rl/infos_aoanet.pkl \
+    --image_folder /path/to/coco/val2014 \
+    --coco_annotations coco-caption/annotations/captions_val2014.json \
+    --output_dir vis/attention_with_metrics \
+    --num_images 10
+```
+
+Console output will include:
+```
+Processing image 1: COCO_val2014_000000391895.jpg
+Generated caption: a bicycle with a clock as the front wheel
+Calculating metrics for image ID: 391895
+  BLEU-1: 0.8571, BLEU-2: 0.7143, BLEU-3: 0.5714, BLEU-4: 0.4286
+  METEOR: 0.3456, CIDEr: 1.2345, ROUGE_L: 0.6789
+  Metrics saved to: vis/attention_with_metrics/evaluation_metrics.csv
+```
 
 ## Implementation Details
 
@@ -192,6 +281,8 @@ This creates example visualizations showing different attention patterns (top-le
 
 ## Testing
 
+### Visualization Tests
+
 Run the test suite to verify the visualization utilities:
 
 ```bash
@@ -203,6 +294,19 @@ All tests should pass, confirming that:
 - Heatmaps are properly generated
 - Visualizations are saved successfully
 - Attention hooks work correctly
+
+### Metric Calculation Tests
+
+Run the test suite to verify the metric calculation functionality:
+
+```bash
+python test_metrics.py
+```
+
+All tests should pass, confirming that:
+- Image ID extraction from filenames works correctly
+- CSV output is formatted properly
+- Metric calculation functions correctly (if dependencies are available)
 
 ## Dependencies
 
@@ -217,6 +321,21 @@ The visualization feature requires:
 Install with:
 ```bash
 pip install torch numpy opencv-python matplotlib pillow scikit-image
+```
+
+For metric calculation, additional dependencies are required:
+- pycocoevalcap (included in coco-caption submodule)
+- pycocotools (included in coco-caption submodule)
+- Java (for METEOR metric calculation)
+
+To set up the coco-caption submodule:
+```bash
+git submodule update --init --recursive
+```
+
+Or manually clone:
+```bash
+git clone https://github.com/ruotianluo/coco-caption.git
 ```
 
 ## Troubleshooting
