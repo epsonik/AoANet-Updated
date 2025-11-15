@@ -24,6 +24,7 @@ import models
 from dataloaderraw import DataLoaderRaw
 import sys
 import vis_utils
+import misc.utils as utils
 
 # Optional imports for COCO evaluation
 try:
@@ -86,8 +87,6 @@ def compute_and_save_coco_metrics(coco, image_id, pred_caption, output_dir):
 
 
 def main(opt):
-    sys.path.append("./misc")
-    import utils
     infos = utils.load_info(opt.infos_path)
     vocab = infos.get('vocab', None)
     if vocab is None:
