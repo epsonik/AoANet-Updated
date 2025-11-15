@@ -1,36 +1,116 @@
+"""
+Utilities for visualizing attention weights in image captioning models.
+"""
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
 import torch
 import numpy as np
-from PIL import Image, ImageDraw, ImageFont
-import cv2
 import os
-import re
-import csv
-from pycocoevalcap.tokenizer.ptbtokenizer import PTBTokenizer
-from pycocoevalcap.bleu.bleu import Bleu
-from pycocoevalcap.meteor.meteor import Meteor
-from pycocoevalcap.rouge.rouge import Rouge
-from pycocoevalcap.cider.cider import Cider
+from PIL import Image, ImageDraw, ImageFont
+import matplotlib.pyplot as plt
+import cv2
 
 
-def resize_attention_to_image(attention, image_shape, grid_size):
+# ----------------- ATTENTION CAPTURING UTILS -----------------
+
+def capture_attention_weights(model, fc_feats, att_feats, att_masks, opt):
     """
-    Resizes the attention map from a grid to the full image size.
+    Runs the model in evaluation mode to generate a caption and capture attention weights.
     """
-    # The attention map is (grid_size*grid_size), reshape to (grid_size, grid_size)
-    attention_map = attention.reshape(grid_size, grid_size)
+    model.eval()
 
-    # Resize to the image dimensions
-    resized_attention = cv2.resize(attention_map, (image_shape[1], image_shape[0]), interpolation=cv2.INTER_LINEAR)
+    attention_weights = []
 
-    return resized_attention
+    # Define a hook to capture the attention weights from the module's state
+    def hook(module, input, output):
+        # The attention weights are stored in module.attn
+        if hasattr(module, 'attn'):
+            weights = module.attn.data.cpu().numpy()
+            # Handle different shapes during beam search vs. greedy
+            if weights.ndim > 2:
+                # Average over the attention heads (axis=1)
+                # This gives us (batch*beam, query_len, key_len)
+                attention_weights.append(np.mean(weights, axis=1))
+
+    hook_handle = model.core.attention.register_forward_hook(hook)
+
+    # Generate sequence
+    seq, _ = model.sample(fc_feats, att_feats, att_masks, opt)
+
+    hook_handle.remove()
+
+    if attention_weights:
+        # For beam search, we only need the weights for the top beam (index 0).
+        num_steps = len(attention_weights)
+        seq_len = seq.size(1)
+
+        # Take the attention from the top beam at each step
+        processed_weights = [att_step[0] for att_step in attention_weights]
+
+        # The number of attention steps can be > seq_len, so truncate.
+        final_weights = np.array(processed_weights[:seq_len])
+        return seq, final_weights
+    else:
+        return seq, []
+
+
+def get_attention_weights_from_sequence(model, fc_feats, att_feats, att_masks, seq):
+    """
+    Re-runs the model with a given sequence to extract attention weights.
+    """
+    model.eval()
+
+    batch_size = fc_feats.size(0)
+    assert batch_size == 1, "Currently only supports batch size of 1"
+
+    wt = fc_feats.new_zeros(batch_size, seq.size(1), dtype=torch.long)
+    wt[:, 0] = model.bos_idx
+    wt[:, 1:] = seq[:, :-1]
+
+    attention_weights = []
+
+    def hook(module, input, output):
+        if hasattr(module, 'attn'):
+            weights = module.attn.data.cpu().numpy()
+            if weights.ndim > 2:
+                attention_weights.append(np.mean(weights, axis=1))
+
+    hook_handle = model.core.attention.register_forward_hook(hook)
+
+    _ = model(fc_feats, att_feats, wt, att_masks)
+
+    hook_handle.remove()
+
+    if attention_weights:
+        # Squeeze out the batch dimension
+        return np.array(attention_weights).squeeze()
+    else:
+        return []
+
+
+# ----------------- VISUALIZATION UTILS -----------------
+
+def resize_attention_to_image(attention, img_size, grid_size):
+    """
+    Resizes the attention map to the original image size.
+    """
+    # Reshape from 1D to 2D grid
+    attention_grid = attention.reshape(grid_size, grid_size)
+
+    # Resize to image size
+    attention_map = cv2.resize(attention_grid, (img_size[0], img_size[1]),
+                               interpolation=cv2.INTER_LINEAR)
+    return attention_map
 
 
 def create_heatmap(attention_map, image):
     """
-    Applies a heatmap to the image based on the attention map.
+    Creates a heatmap overlay on the image.
     """
-    # Normalize the attention map for visualization
-    heatmap = (attention_map - np.min(attention_map)) / (np.max(attention_map) - np.min(attention_map))
+    # Normalize attention map for heatmap
+    heatmap = (attention_map - np.min(attention_map)) / (np.max(attention_map) - np.min(attention_map) + 1e-8)
     heatmap = (heatmap * 255).astype(np.uint8)
 
     # Apply a color map
@@ -73,49 +153,9 @@ def add_caption_to_image(image, caption, word, font_path=None, font_size=20):
     return image
 
 
-def calculate_metrics_and_save(res, gts, image_id, output_dir):
-    """
-    Calculates image captioning metrics and saves them to a CSV file.
-    :param res: dict with predicted caption, e.g., {<image_id>: [{'caption': <pred_caption_string>}]}
-    :param gts: dict with ground truth captions, e.g., {<image_id>: [{'caption': <gt_caption_string_1>}, ...]}
-    :param image_id: The ID of the image.
-    :param output_dir: Directory to save the CSV file.
-    """
-    # Tokenize
-    tokenizer = PTBTokenizer()
-    res_tokenized = tokenizer.tokenize(res)
-    gts_tokenized = tokenizer.tokenize(gts)
-
-    scorers = {
-        "Bleu": Bleu(4),
-        "Meteor": Meteor(),
-        "Rouge": Rouge(),
-        "Cider": Cider()
-    }
-
-    metrics = {}
-    for name, scorer in scorers.items():
-        score, _ = scorer.compute_score(gts_tokenized, res_tokenized)
-        if isinstance(score, list):
-            for i, s in enumerate(score):
-                metrics[f"{name}-{i + 1}"] = s
-        else:
-            metrics[name] = score
-
-    # Save to CSV
-    csv_path = os.path.join(output_dir, f"{image_id}_metrics.csv")
-    with open(csv_path, 'w', newline='') as csvfile:
-        writer = csv.writer(csvfile)
-        writer.writerow(['Metric', 'Score'])
-        for metric, score in metrics.items():
-            writer.writerow([metric, score])
-    print(f"Metrics for image {image_id} saved to {csv_path}")
-
-
-def visualize_attention_for_sequence(image_path, attention_weights, words, output_dir, att_size, coco_annotations=None):
+def visualize_attention_for_sequence(image_path, attention_weights, words, output_dir, att_size):
     """
     Creates and saves a sequence of visualizations for each word in the caption.
-    Optionally calculates and saves captioning metrics if coco_annotations are provided.
     """
     img = Image.open(image_path).convert("RGB")
     # --- POCZĄTEK ZMIANY ---
@@ -129,23 +169,6 @@ def visualize_attention_for_sequence(image_path, attention_weights, words, outpu
     grid_size = int(np.sqrt(att_size))
 
     vis_paths = []
-
-    # --- POCZĄTEK ZMIANY: Obliczanie metryk ---
-    if coco_annotations:
-        # Wyodrębnij ID obrazu COCO z nazwy pliku
-        match = re.search(r'COCO_.*?_(\d+)\.jpg', os.path.basename(image_path))
-        if match:
-            image_id = int(match.group(1))
-
-            predicted_caption = ' '.join(words)
-
-            # Przygotuj dane dla ewaluatora
-            gts = coco_annotations.imgToAnns[image_id]
-            gts_captions = {image_id: [{'caption': ann['caption']} for ann in gts]}
-            res_captions = {image_id: [{'caption': predicted_caption}]}
-
-            calculate_metrics_and_save(res_captions, gts_captions, image_id, output_dir)
-    # --- KONIEC ZMIANY ---
 
     for i, (word, attention) in enumerate(zip(words, attention_weights)):
         # The attention is over the input tokens (text + image). We want the image part.
@@ -167,8 +190,9 @@ def visualize_attention_for_sequence(image_path, attention_weights, words, outpu
 
         # Save the visualization with the word in the filename
         sanitized_word = "".join(c for c in word if c.isalnum() or c in (' ', '_')).rstrip()
-        vis_path = os.path.join(output_dir, f'step_{i}_{sanitized_word}.png')
-        vis_image.save(vis_path)
-        vis_paths.append(vis_path)
+        filename = f"{i}_{sanitized_word}.png"
+        output_path = os.path.join(output_dir, filename)
+        vis_image.save(output_path)
+        vis_paths.append(output_path)
 
     return vis_paths
