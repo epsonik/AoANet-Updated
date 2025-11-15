@@ -87,6 +87,7 @@ def compute_and_save_coco_metrics(coco, image_id, pred_caption, output_dir):
 
 def main(opt):
     sys.path.append("./misc")
+    from utils import utils
     infos = utils.load_info(opt.infos_path)
     vocab = infos.get('vocab', None)
     if vocab is None:
