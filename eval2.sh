@@ -7,5 +7,5 @@ python eval.py --model /home/bartosiewicz/mateusz/densenet121/log_aoanet/model-b
     --beam_size 3 \
     --batch_size 40 \
     --cnn_model densenet121 \
-    --image_folder  /vis \
+    --image_folder  vis \
     --coco_json eval_image.json
