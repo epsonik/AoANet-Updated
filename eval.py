@@ -10,6 +10,8 @@ import eval_utils
 import argparse
 import misc.utils as utils
 import torch
+import json
+
 # Input arguments and options
 parser = argparse.ArgumentParser()
 # Input paths
@@ -21,6 +23,12 @@ parser.add_argument('--infos_path', type=str, default='',
                     help='path to infos to evaluate')
 parser.add_argument('--name', type=str, default='',
                     help='')
+# New args: evaluate a single (or several) image(s) by COCO id
+parser.add_argument('--image_id', type=int, default=None,
+                    help='ID of a single COCO image to evaluate')
+parser.add_argument('--image_ids', type=str, default='',
+                    help='Comma-separated list of COCO image ids to evaluate (e.g. "12345,67890")')
+
 opts.add_eval_options(parser)
 
 opt = parser.parse_args()
@@ -61,6 +69,38 @@ else:
 # When eval using provided pretrained model, the vocab may be different from what you have in your cocotalk.json
 # So make sure to use the vocab in infos file.
 loader.ix_to_word = infos['vocab']
+
+# If user asked to evaluate a specific image or images by COCO id, restrict the loader to them
+if (opt.image_id is not None) or (hasattr(opt, 'image_ids') and opt.image_ids):
+    ids = []
+    if opt.image_id is not None:
+        ids.append(opt.image_id)
+    if getattr(opt, 'image_ids', None):
+        # parse comma-separated ids
+        ids += [int(x) for x in opt.image_ids.split(',') if x.strip()]
+
+    # map coco image id -> index in loader.info['images']
+    id2ix = {img['id']: i for i, img in enumerate(loader.info['images'])}
+    wanted_indices = [id2ix[i] for i in ids if i in id2ix]
+
+    if len(wanted_indices) == 0:
+        print('No matching images found for provided id(s):', ids)
+        print('Make sure the ids exist in', opt.input_json, 'and match the keys used in your feature files.')
+        exit(1)
+
+    # restrict splits to only those indices (we'll use the 'test' split)
+    loader.split_ix = {'train': [], 'val': [], 'test': wanted_indices}
+    loader.iterators = {'train': 0, 'val': 0, 'test': 0}
+
+    # Recreate prefetchers for new split_ix (BlobFetcher is available via dataloader import)
+    loader._prefetch_process = {}
+    for split in loader.iterators.keys():
+        loader._prefetch_process[split] = BlobFetcher(split, loader, split == 'train')
+
+    # Force evaluation split and batch size appropriate for single-image eval
+    opt.split = 'test'
+    opt.batch_size = 1
+    print('Restricted evaluation to image ids:', ids, '-> indices:', wanted_indices)
 
 # Set sample options
 opt.datset = opt.input_json
