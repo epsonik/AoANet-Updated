@@ -104,7 +104,7 @@ class DataLoaderRaw():
 
         print(len(self.coco_json))
         if len(self.coco_json) > 0:
-            print('reading from ' + self.coco_json)
+            print('reading from ' + opt.coco_json)
             # read in filenames from the coco-style json file
             self.coco_annotation = json.load(open(self.coco_json))
             for k, v in enumerate(self.coco_annotation['images']):
