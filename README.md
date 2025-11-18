@@ -36,9 +36,21 @@ See `opts.py` for the options. (You can download the pretrained models from [her
 
 ### Evaluation
 
+**Option 1: Using pre-extracted features (eval.py)**
+
 ```bash
 $ CUDA_VISIBLE_DEVICES=0 python eval.py --model log/log_aoanet_rl/model.pth --infos_path log/log_aoanet_rl/infos_aoanet.pkl  --dump_images 0 --dump_json 1 --num_images -1 --language_eval 1 --beam_size 2 --batch_size 100 --split test
 ```
+
+**Option 2: Direct inference on raw images (inference.py)**
+
+For quick inference on raw images with automatic evaluation:
+
+```bash
+$ python inference.py --model log/log_aoanet_rl/model.pth --infos_path log/log_aoanet_rl/infos_aoanet.pkl --image_folder /path/to/val2014 --reference_captions captions_val2014.json
+```
+
+This will generate captions and evaluate them using BLEU, METEOR, ROUGE, and CIDEr metrics. See [INFERENCE_README.md](INFERENCE_README.md) for detailed usage.
 
 ### Attention Visualization
 
