@@ -9,7 +9,7 @@ config_list = ["inception","resnet101","resnet152","densenet121","densenet161","
 
 histories_rl = {}
 for config_item in config_list:
-    with open(os.path.join(g_path, config_item, 'log_aoanet_rl', 'histories_aoanet.pkl'), 'rb') as f:
+    with open(os.path.join(g_path, config_item, 'log_aoanet', 'histories_aoanet.pkl'), 'rb') as f:
         histories_rl = utils.pickle_load(f)
 
     val_result_history = histories_rl.get('val_result_history', {})
