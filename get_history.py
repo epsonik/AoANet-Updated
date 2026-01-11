@@ -3,9 +3,9 @@ import os
 import csv
 import os
 
-g_path = "/mnt/dysk2/dane/AoANet-Updated/log/old/"
+g_path = "/mnt/dysk2/dane/AoANet-Updated/"
 
-config_list = ["regnet"]
+config_list = ["inception","resnet101","resnet152","densenet121","densenet161","densenet201","regnet"]
 
 histories_rl = {}
 for config_item in config_list:
@@ -17,7 +17,7 @@ for config_item in config_list:
 
     lines_dict = []
     header = ["iteration", "CIDEr", "BLEU-4", "loss"]
-    filename = os.path.join("/mnt/dysk2/dane/AoANet-Updated/log/", config_item + "_metrics.csv")
+    filename = os.path.join("/home/bartosiewicz/mateusz/AoANet-Updated/log/", config_item + "_metrics.csv")
     for iteration in val_result_history.keys():
         val_CIDEr = val_result_history[iteration]['lang_stats']['CIDEr']
         val_BLEU_4 = val_result_history[iteration]['lang_stats']['Bleu_4']
