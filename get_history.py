@@ -3,7 +3,7 @@ import os
 import csv
 import os
 
-g_path = "/mnt/dysk2/dane/AoANet-Updated/"
+g_path = "/mnt/dysk2/dane/"
 
 config_list = ["inception","resnet101","resnet152","densenet121","densenet161","densenet201","regnet"]
 
